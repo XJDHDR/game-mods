@@ -1,0 +1,2 @@
+The license for everything in this folder is exactly the same as the license for the original Enhanced Camera by LogicDragon. To quote it:
+"You can do whatever you want with this mod, just give me credits if you use any part of the mod."
