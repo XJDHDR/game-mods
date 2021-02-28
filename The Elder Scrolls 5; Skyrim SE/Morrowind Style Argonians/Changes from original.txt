@@ -1,0 +1,4 @@
+- Converted and optimised meshes for Skyrim Special Edition.
+	- This also fixed the CTD caused by the female head mesh.
+- Saved esp in the SE Creation Kit to convert it to SE format.
+- Merged bug fixes from the Unofficial Skyrim Special Edition Patch v4.2.3
