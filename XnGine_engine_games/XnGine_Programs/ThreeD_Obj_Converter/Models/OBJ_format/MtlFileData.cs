@@ -16,6 +16,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
 	internal readonly struct MtlFileData
 	{
+		/// <summary> Add your comments here, including newlines and the starting # for each line. </summary>
 		internal readonly string _HeaderComments;
 
 		internal readonly string[] _AllMaterialNames;
