@@ -6,9 +6,15 @@
 //
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Windows;
+using System.Windows.Documents;
+using Vector = System.Numerics.Vector;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
@@ -16,7 +22,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 	{
 		/// <summary> Add your comments here, including newlines and the starting # for each line. </summary>
 		internal readonly string _HeaderComments;
-		internal readonly string _MaterialLibraryFilename;
+
+		internal readonly string[] _InlineCommentStrings;
+		internal readonly int[] _InlineCommentStartIndex;
+
+		internal readonly string[] _MaterialLibraryFilenames;
 
 		internal readonly Vector4[] _AllVertices;
 		internal readonly Vector3[] _AllVertexTextures;
@@ -30,19 +40,145 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 		internal ObjFileData(Stream ObjDataStream)
 		{
+			_HeaderComments = string.Empty;
+			_InlineCommentStrings = Array.Empty<string>();
+			_InlineCommentStartIndex = Array.Empty<int>();
+
 			using (StreamReader objDataStreamReader = new StreamReader(ObjDataStream))
 			{
-				string? readString = string.Empty;
-				while ((readString = objDataStreamReader.ReadLine()) != null)
+				// Lists and StringBuilder used for temp storage of arrays and strings that are being constructed
+				List<string> inlineCommentStrings = new();
+				List<int> inlineCommentStartIndex = new();
+				List<string> materialLibraryFilenames = new();
+				List<Vector4> allVertices = new();
+				List<Vector3> allVertexTextures = new();
+				StringBuilder commonStringsBuilder = new();
+				StringBuilder messagesStringBuilder = new();
+
+				// Fields that indicate the reading status for comments
+				bool havePassedHeader = false;
+				bool isBusyReadingHeader = true;
+				bool isBusyReadingInlineComment = false;
+				int linesOfObjDataRead = 0;
+
+				string? readString = objDataStreamReader.ReadLine()?.Trim();
+				for (int i = 0; i < int.MaxValue; ++i)
 				{
+					// Check if the end of the stream has been reached.
+					if (readString == null)
+						break;
+
+					// Check if this is an empty line.
 					if (string.IsNullOrWhiteSpace(readString))
 						continue;
 
+					// Check if this is a comment
 					if (readString.StartsWith("#"))
 					{
 						// This line is a comment
+						if (havePassedHeader)
+							isBusyReadingInlineComment = true;
+
+						commonStringsBuilder.Append(readString);
+						continue;
+					}
+
+					// Since this line is not a comment, was a comment being read previously?
+					if (isBusyReadingInlineComment || isBusyReadingHeader)
+					{
+						if (havePassedHeader)
+						{
+							inlineCommentStartIndex.Add(linesOfObjDataRead);
+							inlineCommentStrings.Add(commonStringsBuilder.ToString());
+						}
+						else
+						{
+							_HeaderComments = commonStringsBuilder.ToString();
+							isBusyReadingHeader = false;
+							havePassedHeader = true;
+						}
+						isBusyReadingInlineComment = false;
+						commonStringsBuilder.Clear();
+					}
+
+					++linesOfObjDataRead;
+					string[] readSubstrings = readString.Split(" ",
+						StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+					if (readSubstrings.Length < 2)
+					{
+						messagesStringBuilder.AppendLine($"Error: Line {i} in the OBJ stream does not contain recognised info and will be skipped:");
+						messagesStringBuilder.AppendLine($"{readString}");
+						messagesStringBuilder.AppendLine();
+						continue;
+					}
+
+					switch (readSubstrings[0])
+					{
+						case "mtllib":
+							// This line defines a Material resource file
+							for (int j = 1; j < readSubstrings.Length; ++j)
+							{
+								commonStringsBuilder.Append(readSubstrings[j]);
+							}
+							materialLibraryFilenames.Add(commonStringsBuilder.ToString());
+							commonStringsBuilder.Clear();
+							break;
+
+						case "v":
+							// This line defines a Vertex
+							if (readSubstrings.Length is not (4 or 5))
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex in the OBJ stream does not ");
+								messagesStringBuilder.AppendLine("have 3 or 4 values defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+							}
+
+							// Is the 4th parameter defined. If not, insert the default value of 1
+							float wParameterValue = (readSubstrings.Length is 5) ?
+								float.Parse(readSubstrings[4], NumberStyles.Float, CultureInfo.InvariantCulture) :
+								1;
+
+							allVertices.Add(new Vector4(
+								float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture),
+								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture),
+								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture),
+								wParameterValue
+							));
+							break;
+
+						case "vt":
+							// This line defines a Vertex Texture
+							if (readSubstrings.Length is not (2 or 3 or 4))
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex Texture in the OBJ stream does not ");
+								messagesStringBuilder.AppendLine("have between 2 and 4 values defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+							}
+
+							float xValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							float yValue = (readSubstrings.Length >= 3) ?
+								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture) :
+								0;
+							float zValue = (readSubstrings.Length == 4) ?
+								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture) :
+								0;
+
+							allVertexTextures.Add(new Vector3(xValue, yValue, zValue));
+							break;
 					}
 				}
+
+				_InlineCommentStrings = inlineCommentStrings.ToArray();
+				_InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
+				_MaterialLibraryFilenames = materialLibraryFilenames.ToArray();
+				_AllVertices = allVertices.ToArray();
+				_AllVertexTextures = allVertexTextures.ToArray();
+
+				if (messagesStringBuilder.Length > 0)
+					MessageBox.Show(messagesStringBuilder.ToString());
 			}
 		}
 
@@ -54,18 +190,34 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			outputStringBuilder.AppendLine(_HeaderComments);
 			outputStringBuilder.AppendLine();
 
-			outputStringBuilder.AppendLine($"mtllib {_MaterialLibraryFilename}");
+			for (int i = 0; i < _MaterialLibraryFilenames.Length; ++i)
+				outputStringBuilder.AppendLine($"mtllib {_MaterialLibraryFilenames[i]}");
+
 			outputStringBuilder.AppendLine();
 
 			for (int i = 0; i < _AllVertices.Length; ++i)
 			{
-				outputStringBuilder.AppendLine($"v {_AllVertices[i].X} {_AllVertices[i].Y} {_AllVertices[i].Z} {_AllVertices[i].W}");
+				// Is the W parameter equal to 1 (default value)? If not, don't include it in the final output stream.
+				outputStringBuilder.AppendLine(
+					(Math.Abs(_AllVertices[i].W - 1) < 0.00000000001) ?
+					$"v {_AllVertices[i].X} {_AllVertices[i].Y} {_AllVertices[i].Z} {_AllVertices[i].W}" :
+					$"v {_AllVertices[i].X} {_AllVertices[i].Y} {_AllVertices[i].Z}"
+				);
 			}
 			outputStringBuilder.AppendLine();
 
 			for (int i = 0; i < _AllVertexTextures.Length; ++i)
 			{
-				outputStringBuilder.AppendLine($"vt {_AllVertexTextures[i].X} {_AllVertexTextures[i].Y} {_AllVertexTextures[i].Z}");
+				// Is the Z parameter equal to 0 (default value)? If not, don't include it in the final output stream.
+				if (Math.Abs(_AllVertexTextures[i].Z) > 0.00000000001)
+					outputStringBuilder.AppendLine($"vt {_AllVertexTextures[i].X} {_AllVertexTextures[i].Y} {_AllVertexTextures[i].Z}");
+
+				// Is the Y parameter also equal to 0 (default value)? If not, don't include it in the final output stream either.
+				else if (Math.Abs(_AllVertexTextures[i].Y) > 0.00000000001)
+					outputStringBuilder.AppendLine($"vt {_AllVertexTextures[i].X} {_AllVertexTextures[i].Y}");
+
+				else
+					outputStringBuilder.AppendLine($"vt {_AllVertexTextures[i].X}");
 			}
 			outputStringBuilder.AppendLine();
 
