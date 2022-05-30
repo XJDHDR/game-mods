@@ -52,6 +52,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				List<string> materialLibraryFilenames = new();
 				List<Vector4> allVertices = new();
 				List<Vector3> allVertexTextures = new();
+				List<Vector3> allVertexNormals = new();
 				StringBuilder commonStringsBuilder = new();
 				StringBuilder messagesStringBuilder = new();
 
@@ -60,6 +61,8 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				bool isBusyReadingHeader = true;
 				bool isBusyReadingInlineComment = false;
 				int linesOfObjDataRead = 0;
+
+				char[] whitespaceChars = {' ', '	'};
 
 				string? readString = objDataStreamReader.ReadLine()?.Trim();
 				for (int i = 0; i < int.MaxValue; ++i)
@@ -102,8 +105,9 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					}
 
 					++linesOfObjDataRead;
-					string[] readSubstrings = readString.Split(" ",
-						StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+					string[] readSubstrings = readString.Split(
+						whitespaceChars, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+						);
 
 					if (readSubstrings.Length < 2)
 					{
@@ -125,12 +129,16 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							commonStringsBuilder.Clear();
 							break;
 
+						case "f":
+							// This line defines a Face
+							break;
+
 						case "v":
 							// This line defines a Vertex
 							if (readSubstrings.Length is not (4 or 5))
 							{
 								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex in the OBJ stream does not ");
-								messagesStringBuilder.AppendLine("have 3 or 4 values defined, and will be skipped:");
+								messagesStringBuilder.AppendLine("have 3 or 4 parts defined, and will be skipped:");
 								messagesStringBuilder.AppendLine($"{readString}");
 								messagesStringBuilder.AppendLine();
 							}
@@ -148,25 +156,42 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							));
 							break;
 
+						case "vn":
+							// This line defines a Vertex Normal
+							if (readSubstrings.Length is not 4)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex Normal in the OBJ stream does not ");
+								messagesStringBuilder.AppendLine("have 4 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+							}
+
+							float normalXValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							float normalYValue = float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture);
+							float normalZValue = float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture);
+
+							allVertexNormals.Add(new Vector3(normalXValue, normalYValue, normalZValue));
+							break;
+
 						case "vt":
 							// This line defines a Vertex Texture
 							if (readSubstrings.Length is not (2 or 3 or 4))
 							{
 								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex Texture in the OBJ stream does not ");
-								messagesStringBuilder.AppendLine("have between 2 and 4 values defined, and will be skipped:");
+								messagesStringBuilder.AppendLine("have between 2 and 4 parts defined, and will be skipped:");
 								messagesStringBuilder.AppendLine($"{readString}");
 								messagesStringBuilder.AppendLine();
 							}
 
-							float xValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
-							float yValue = (readSubstrings.Length >= 3) ?
+							float textureXValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							float textureYValue = (readSubstrings.Length >= 3) ?
 								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture) :
 								0;
-							float zValue = (readSubstrings.Length == 4) ?
+							float textureZValue = (readSubstrings.Length == 4) ?
 								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture) :
 								0;
 
-							allVertexTextures.Add(new Vector3(xValue, yValue, zValue));
+							allVertexTextures.Add(new Vector3(textureXValue, textureYValue, textureZValue));
 							break;
 					}
 				}
@@ -176,6 +201,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				_MaterialLibraryFilenames = materialLibraryFilenames.ToArray();
 				_AllVertices = allVertices.ToArray();
 				_AllVertexTextures = allVertexTextures.ToArray();
+				_AllVertexNormals = allVertexNormals.ToArray();
 
 				if (messagesStringBuilder.Length > 0)
 					MessageBox.Show(messagesStringBuilder.ToString());
