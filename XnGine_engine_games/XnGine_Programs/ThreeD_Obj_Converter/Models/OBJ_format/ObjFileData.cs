@@ -53,8 +53,20 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				List<Vector4> allVertices = new();
 				List<Vector3> allVertexTextures = new();
 				List<Vector3> allVertexNormals = new();
+				List<FaceDefinition> allFaces = new();
+				List<MaterialDefinition> allMaterials = new();
 				StringBuilder commonStringsBuilder = new();
 				StringBuilder messagesStringBuilder = new();
+
+				// Assign an empty array to these fields until the OBJ stream has been completely read.
+				_InlineCommentStrings = Array.Empty<string>();
+				_InlineCommentStartIndex = Array.Empty<int>();
+				_MaterialLibraryFilenames = Array.Empty<string>();
+				_AllVertices = Array.Empty<Vector4>();
+				_AllVertexTextures = Array.Empty<Vector3>();
+				_AllVertexNormals = Array.Empty<Vector3>();
+				_AllFaces = Array.Empty<FaceDefinition>();
+				_AllMaterials = Array.Empty<MaterialDefinition>();
 
 				// Fields that indicate the reading status for comments
 				bool havePassedHeader = false;
@@ -131,6 +143,31 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 						case "f":
 							// This line defines a Face
+							if (readSubstrings.Length < 4)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a Face in the OBJ stream has ");
+								messagesStringBuilder.AppendLine("less than 3 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+								break;
+							}
+							allFaces.Add(new FaceDefinition(readSubstrings));
+							break;
+
+						case "o":
+							break;
+
+						case "usemtl":
+							// This line defines a point where all the subsequent faces must use the specified material reference.
+							if (readSubstrings.Length is not 2)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a material reference in the OBJ stream ");
+								messagesStringBuilder.AppendLine("does not have 2 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+								break;
+							}
+							allMaterials.Add(new MaterialDefinition(readSubstrings[1], i));
 							break;
 
 						case "v":
@@ -141,6 +178,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								messagesStringBuilder.AppendLine("have 3 or 4 parts defined, and will be skipped:");
 								messagesStringBuilder.AppendLine($"{readString}");
 								messagesStringBuilder.AppendLine();
+								break;
 							}
 
 							// Is the 4th parameter defined. If not, insert the default value of 1
@@ -164,6 +202,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								messagesStringBuilder.AppendLine("have 4 parts defined, and will be skipped:");
 								messagesStringBuilder.AppendLine($"{readString}");
 								messagesStringBuilder.AppendLine();
+								break;
 							}
 
 							float normalXValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
@@ -181,6 +220,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								messagesStringBuilder.AppendLine("have between 2 and 4 parts defined, and will be skipped:");
 								messagesStringBuilder.AppendLine($"{readString}");
 								messagesStringBuilder.AppendLine();
+								break;
 							}
 
 							float textureXValue = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
@@ -196,12 +236,31 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					}
 				}
 
-				_InlineCommentStrings = inlineCommentStrings.ToArray();
-				_InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
-				_MaterialLibraryFilenames = materialLibraryFilenames.ToArray();
-				_AllVertices = allVertices.ToArray();
-				_AllVertexTextures = allVertexTextures.ToArray();
-				_AllVertexNormals = allVertexNormals.ToArray();
+				// Assign all of the lists created above to the array fields, but check if the lists have anything in them
+				// first to prevent excessive heap allocations.
+				if (inlineCommentStrings.Count != 0)
+					_InlineCommentStrings = inlineCommentStrings.ToArray();
+
+				if (inlineCommentStartIndex.Count != 0)
+					_InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
+
+				if (materialLibraryFilenames.Count != 0)
+					_MaterialLibraryFilenames = materialLibraryFilenames.ToArray();
+
+				if (allVertices.Count != 0)
+					_AllVertices = allVertices.ToArray();
+
+				if (allVertexTextures.Count != 0)
+					_AllVertexTextures = allVertexTextures.ToArray();
+
+				if (allVertexNormals.Count != 0)
+					_AllVertexNormals = allVertexNormals.ToArray();
+
+				if (allFaces.Count != 0)
+					_AllFaces = allFaces.ToArray();
+
+				if (allMaterials.Count != 0)
+					_AllMaterials = allMaterials.ToArray();
 
 				if (messagesStringBuilder.Length > 0)
 					MessageBox.Show(messagesStringBuilder.ToString());
@@ -289,40 +348,21 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				++NextMaterial;
 			}
 
-			if (_AllFaces[I]._Corner1._IsUsed)
+			for (int j = 0; j < _AllFaces[I]._Corners.Length; ++j)
 			{
-				OutputStringBuilder.Append(
-					$"f {_AllFaces[I]._Corner1._VertexIndex}/{_AllFaces[I]._Corner1._VertexTextureIndex}");
+				OutputStringBuilder.Append($"f {_AllFaces[I]._Corners[j]._VertexIndex}");
 
-				if (_AllFaces[I]._Corner1._IsVertexNormalUsed)
-					OutputStringBuilder.Append($"/{_AllFaces[I]._Corner1._VertexNormalIndex}");
+				if (_AllFaces[I]._Corners[j]._IsVertexTextureUsed)
+					OutputStringBuilder.Append(($"/{_AllFaces[I]._Corners[j]._VertexTextureIndex}"));
 
-				if (_AllFaces[I]._Corner2._IsUsed)
-				{
-					OutputStringBuilder.Append(
-						$" {_AllFaces[I]._Corner2._VertexIndex}/{_AllFaces[I]._Corner2._VertexTextureIndex}");
+				else if (_AllFaces[I]._Corners[j]._IsVertexNormalUsed)
+					OutputStringBuilder.Append('/');
 
-					if (_AllFaces[I]._Corner2._IsVertexNormalUsed)
-						OutputStringBuilder.Append($"/{_AllFaces[I]._Corner2._VertexNormalIndex}");
 
-					if (_AllFaces[I]._Corner3._IsUsed)
-					{
-						OutputStringBuilder.Append(
-							$" {_AllFaces[I]._Corner3._VertexIndex}/{_AllFaces[I]._Corner3._VertexTextureIndex}");
+				if (_AllFaces[I]._Corners[j]._IsVertexNormalUsed)
+					OutputStringBuilder.Append($"/{_AllFaces[I]._Corners[j]._VertexNormalIndex}");
 
-						if (_AllFaces[I]._Corner3._IsVertexNormalUsed)
-							OutputStringBuilder.Append($"/{_AllFaces[I]._Corner3._VertexNormalIndex}");
-
-						if (_AllFaces[I]._Corner4._IsUsed)
-						{
-							OutputStringBuilder.Append(
-								$" {_AllFaces[I]._Corner4._VertexIndex}/{_AllFaces[I]._Corner4._VertexTextureIndex}");
-
-							if (_AllFaces[I]._Corner4._IsVertexNormalUsed)
-								OutputStringBuilder.Append($"/{_AllFaces[I]._Corner4._VertexNormalIndex}");
-						}
-					}
-				}
+				OutputStringBuilder.Append(' ');
 			}
 
 			OutputStringBuilder.AppendLine();
@@ -332,23 +372,93 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 	internal readonly struct FaceDefinition
 	{
-		internal readonly FaceCornerDefinition _Corner1;
-		internal readonly FaceCornerDefinition _Corner2;
-		internal readonly FaceCornerDefinition _Corner3;
-		internal readonly FaceCornerDefinition _Corner4;
+		internal readonly FaceCornerDefinition[] _Corners;
+
+		internal FaceDefinition(string[] FaceStringParts)
+		{
+			// Are there any empty strings in the array?
+			int arrayElemsEmptyCount = 0;
+			for (int i = 0; i < FaceStringParts.Length; ++i)
+			{
+				if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
+					++arrayElemsEmptyCount;
+			}
+
+			// Did the user pass in the Face definition prefix?
+			bool firstPartIsFaceDefinition = FaceStringParts[0].Equals("f", StringComparison.OrdinalIgnoreCase);
+			_Corners = firstPartIsFaceDefinition ?
+				new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount - 1] :
+				new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount];
+
+			arrayElemsEmptyCount = 0;
+			for (int i = 0; i < _Corners.Length; ++i)
+			{
+				// If this array index has an empty string, skip past it.
+				if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
+				{
+					++arrayElemsEmptyCount;
+					continue;
+				}
+
+				int currentIndexElement;
+				if (firstPartIsFaceDefinition)
+					currentIndexElement = i + arrayElemsEmptyCount + 1;
+
+				else
+					currentIndexElement = i + arrayElemsEmptyCount;
+
+				_Corners[i] = new FaceCornerDefinition(FaceStringParts[currentIndexElement]);
+			}
+		}
 	}
 
 	internal readonly struct FaceCornerDefinition
 	{
-		internal readonly bool _IsUsed = false;
-		internal readonly uint _VertexIndex = 0;
-		internal readonly uint _VertexTextureIndex = 0;
+		// Don't change any Int into a UInt. The specification allows negative values (offset from end instead of start)
+		internal readonly int _VertexIndex;
+		internal readonly bool _IsVertexTextureUsed = false;
+		internal readonly int _VertexTextureIndex = 0;
 		internal readonly bool _IsVertexNormalUsed = false;
-		internal readonly uint _VertexNormalIndex = 0;
+		internal readonly int _VertexNormalIndex = 0;
 
-		internal FaceCornerDefinition(BinaryReader FaceCornerBinaryReader)
+		internal FaceCornerDefinition(string CurrentFaceStringPart)
 		{
-			_IsUsed = true;
+			string[] indicesInString = CurrentFaceStringPart.Split('/', StringSplitOptions.TrimEntries);
+
+			switch (indicesInString.Length)
+			{
+				case 0:
+					throw new ArgumentException($"The passed in string ({CurrentFaceStringPart}) is empty, which is not allowed.");
+
+				case 1:
+					// Only the Vertex parameter is defined.
+					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+					break;
+
+				case 2:
+					// This has the Vertex Texture parameter defined as well.
+					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+					_IsVertexTextureUsed = true;
+					_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
+					break;
+
+				default:
+				// More than 3 parts in this string. Only pay attention to the first 3 and ignore the rest.
+				// ReSharper disable once RedundantCaseLabel
+				case 3:
+					// This has the Vertex Normal parameter defined as well, with or without the Texture Normal too.
+					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+					_IsVertexNormalUsed = true;
+					_VertexNormalIndex = int.Parse(indicesInString[2], NumberStyles.Integer);
+
+					if (indicesInString[1].Length > 0)
+					{
+						_IsVertexTextureUsed = true;
+						_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
+					}
+
+					break;
+			}
 		}
 	}
 
@@ -362,5 +472,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 	{
 		internal readonly string _MaterialName;
 		internal readonly int _MaterialStartIndex;
+
+		internal MaterialDefinition(string MaterialReference, int StartIndex)
+		{
+			_MaterialName = MaterialReference;
+			_MaterialStartIndex = StartIndex;
+		}
 	}
 }
