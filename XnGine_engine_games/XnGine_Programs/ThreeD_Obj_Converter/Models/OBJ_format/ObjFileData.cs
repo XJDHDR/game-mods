@@ -9,12 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Windows;
-using System.Windows.Documents;
-using Vector = System.Numerics.Vector;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
@@ -33,9 +30,13 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly Vector3[] _AllVertexNormals;
 		internal readonly FaceDefinition[] _AllFaces;
 
+		internal readonly ObjectDefinition[] _AllObjects;
+
 		internal readonly GroupDefinition[] _AllGroups;
 
 		internal readonly MaterialDefinition[] _AllMaterials;
+
+		internal readonly SmoothingGroup[] _AllSmoothingGroups;
 
 
 		internal ObjFileData(Stream ObjDataStream)
@@ -54,7 +55,10 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				List<Vector3> allVertexTextures = new();
 				List<Vector3> allVertexNormals = new();
 				List<FaceDefinition> allFaces = new();
+				List<GroupDefinition> allGroups = new();
+				List<ObjectDefinition> allObjects = new();
 				List<MaterialDefinition> allMaterials = new();
+				List<SmoothingGroup> allSmoothingGroups = new();
 				StringBuilder commonStringsBuilder = new();
 				StringBuilder messagesStringBuilder = new();
 
@@ -66,7 +70,10 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				_AllVertexTextures = Array.Empty<Vector3>();
 				_AllVertexNormals = Array.Empty<Vector3>();
 				_AllFaces = Array.Empty<FaceDefinition>();
+				_AllGroups = Array.Empty<GroupDefinition>();
+				_AllObjects = Array.Empty<ObjectDefinition>();
 				_AllMaterials = Array.Empty<MaterialDefinition>();
+				_AllSmoothingGroups = Array.Empty<SmoothingGroup>();
 
 				// Fields that indicate the reading status for comments
 				bool havePassedHeader = false;
@@ -154,7 +161,54 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							allFaces.Add(new FaceDefinition(readSubstrings));
 							break;
 
+						case "g":
+							// This line defines a point where all the subsequent entries are part of the same group.
+							if (readSubstrings.Length < 2)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a group in the OBJ stream has ");
+								messagesStringBuilder.AppendLine("less than 2 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+								break;
+							}
+							for (int j = 1; j < readSubstrings.Length; ++j)
+							{
+								commonStringsBuilder.Append(readSubstrings[j]);
+							}
+							allGroups.Add(new GroupDefinition(commonStringsBuilder.ToString(), i));
+							commonStringsBuilder.Clear();
+							break;
+
 						case "o":
+							// This line defines a point where all the subsequent entries are part of the same object.
+							if (readSubstrings.Length < 2)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining an object in the OBJ stream has ");
+								messagesStringBuilder.AppendLine("less than 2 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+								break;
+							}
+							for (int j = 1; j < readSubstrings.Length; ++j)
+							{
+								commonStringsBuilder.Append(readSubstrings[j]);
+							}
+							allObjects.Add(new ObjectDefinition(commonStringsBuilder.ToString(), i));
+							commonStringsBuilder.Clear();
+							break;
+
+						case "s":
+							// This line defines a smoothing group, or disables smoothing.
+							if (readSubstrings.Length is not 2)
+							{
+								messagesStringBuilder.Append($"Error: Line {i} defining a smoothing group in the OBJ stream ");
+								messagesStringBuilder.AppendLine("does not have 2 parts defined, and will be skipped:");
+								messagesStringBuilder.AppendLine($"{readString}");
+								messagesStringBuilder.AppendLine();
+								break;
+							}
+
+							allSmoothingGroups.Add(new SmoothingGroup(readSubstrings[1], i));
 							break;
 
 						case "usemtl":
@@ -259,8 +313,17 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				if (allFaces.Count != 0)
 					_AllFaces = allFaces.ToArray();
 
+				if (allGroups.Count != 0)
+					_AllGroups = allGroups.ToArray();
+
+				if (allObjects.Count != 0)
+					_AllObjects = allObjects.ToArray();
+
 				if (allMaterials.Count != 0)
 					_AllMaterials = allMaterials.ToArray();
+
+				if (allSmoothingGroups.Count != 0)
+					_AllSmoothingGroups = allSmoothingGroups.ToArray();
 
 				if (messagesStringBuilder.Length > 0)
 					MessageBox.Show(messagesStringBuilder.ToString());
@@ -466,6 +529,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 	{
 		internal readonly string _GroupName;
 		internal readonly int _GroupStartIndex;
+
+		internal GroupDefinition(string Name, int StartIndex)
+		{
+			_GroupName = Name;
+			_GroupStartIndex = StartIndex;
+		}
 	}
 
 	internal readonly struct MaterialDefinition
@@ -477,6 +546,30 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		{
 			_MaterialName = MaterialReference;
 			_MaterialStartIndex = StartIndex;
+		}
+	}
+
+	internal readonly struct ObjectDefinition
+	{
+		internal readonly string _ObjectName;
+		internal readonly int _ObjectStartIndex;
+
+		internal ObjectDefinition(string Name, int StartIndex)
+		{
+			_ObjectName = Name;
+			_ObjectStartIndex = StartIndex;
+		}
+	}
+
+	internal readonly struct SmoothingGroup
+	{
+		internal readonly string _SmoothShadingGroup;
+		internal readonly int _SmoothingStartIndex;
+
+		internal SmoothingGroup(string SmoothShadingGroup, int StartIndex)
+		{
+			_SmoothShadingGroup = SmoothShadingGroup;
+			_SmoothingStartIndex = StartIndex;
 		}
 	}
 }
