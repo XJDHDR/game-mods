@@ -12,6 +12,7 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Windows;
+using System.Windows.Documents;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
@@ -175,7 +176,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							{
 								commonStringsBuilder.Append(readSubstrings[j]);
 							}
-							allGroups.Add(new GroupDefinition(commonStringsBuilder.ToString(), i));
+							allGroups.Add(new GroupDefinition(commonStringsBuilder.ToString(), linesOfObjDataRead));
 							commonStringsBuilder.Clear();
 							break;
 
@@ -193,7 +194,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							{
 								commonStringsBuilder.Append(readSubstrings[j]);
 							}
-							allObjects.Add(new ObjectDefinition(commonStringsBuilder.ToString(), i));
+							allObjects.Add(new ObjectDefinition(commonStringsBuilder.ToString(), linesOfObjDataRead));
 							commonStringsBuilder.Clear();
 							break;
 
@@ -208,7 +209,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								break;
 							}
 
-							allSmoothingGroups.Add(new SmoothingGroup(readSubstrings[1], i));
+							allSmoothingGroups.Add(new SmoothingGroup(readSubstrings[1], linesOfObjDataRead));
 							break;
 
 						case "usemtl":
@@ -221,7 +222,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								messagesStringBuilder.AppendLine();
 								break;
 							}
-							allMaterials.Add(new MaterialDefinition(readSubstrings[1], i));
+							allMaterials.Add(new MaterialDefinition(readSubstrings[1], linesOfObjDataRead));
 							break;
 
 						case "v":
@@ -333,26 +334,70 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 		internal void _Write(Stream OutputStream)
 		{
+			int objDataLinesWritten = 0;
+			bool checkInlineComments = (_InlineCommentStrings.Length > 0);
+			int currentInlineComment = 0;
+			bool checkObjects = (_AllObjects.Length > 0);
+			int currentObject = 0;
+			bool checkGroups = (_AllGroups.Length > 0);
+			int currentGroup = 0;
+			bool checkMaterials = (_AllMaterials.Length > 0);
+			int currentMaterial = 0;
+			bool checkSmoothing = (_AllSmoothingGroups.Length > 0);
+			int currentSmoothing = 0;
+
+
 			StringBuilder outputStringBuilder = new();
+			Span<byte> intermediateByteSpan = Span<byte>.Empty;
+			ReadOnlySpan<byte> crlf = stackalloc byte[] {0x0d, 0x0a};
+			CultureInfo invar = CultureInfo.InvariantCulture;
 
-			outputStringBuilder.AppendLine(_HeaderComments);
-			outputStringBuilder.AppendLine();
 
+			// Start off with the header comments.
+			Encoding.UTF8.GetBytes(_HeaderComments, intermediateByteSpan);
+			OutputStream.Write(intermediateByteSpan);
+			OutputStream.Write(crlf);
+
+			// Add the material library references after the header
 			for (int i = 0; i < _MaterialLibraryFilenames.Length; ++i)
-				outputStringBuilder.AppendLine($"mtllib {_MaterialLibraryFilenames[i]}");
+			{
+				checkForInterDataItemToBeWritten(OutputStream, ref objDataLinesWritten,
+					ref checkInlineComments, ref currentInlineComment,
+					ref checkObjects, ref currentObject,
+					ref checkGroups, ref currentGroup,
+					ref checkMaterials, ref currentMaterial,
+					ref checkSmoothing, ref currentSmoothing);
 
-			outputStringBuilder.AppendLine();
+				Encoding.UTF8.GetBytes($"mtllib {_MaterialLibraryFilenames[i]}", intermediateByteSpan);
+				OutputStream.Write(intermediateByteSpan);
+				OutputStream.Write(crlf);
+				++objDataLinesWritten;
+			}
+			OutputStream.Write(crlf);
 
+			// Add every vertex definition to the file.
 			for (int i = 0; i < _AllVertices.Length; ++i)
 			{
+				checkForInterDataItemToBeWritten(OutputStream, ref objDataLinesWritten,
+					ref checkInlineComments, ref currentInlineComment,
+					ref checkObjects, ref currentObject,
+					ref checkGroups, ref currentGroup,
+					ref checkMaterials, ref currentMaterial,
+					ref checkSmoothing, ref currentSmoothing);
+
 				// Is the W parameter equal to 1 (default value)? If not, don't include it in the final output stream.
-				outputStringBuilder.AppendLine(
-					(Math.Abs(_AllVertices[i].W - 1) < 0.00000000001) ?
-					$"v {_AllVertices[i].X} {_AllVertices[i].Y} {_AllVertices[i].Z} {_AllVertices[i].W}" :
-					$"v {_AllVertices[i].X} {_AllVertices[i].Y} {_AllVertices[i].Z}"
-				);
+				Vector4 aVert = _AllVertices[i];
+				Encoding.UTF8.GetBytes(
+					Math.Abs(aVert.W - 1) < 0.00000000001 ?
+						$"v {aVert.X.ToString(invar)} {aVert.Y.ToString(invar)} {aVert.Z.ToString(invar)} {aVert.W.ToString(invar)}" :
+						$"v {aVert.X.ToString(invar)} {aVert.Y.ToString(invar)} {aVert.Z.ToString(invar)}"
+					, intermediateByteSpan);
+
+				OutputStream.Write(intermediateByteSpan);
+				OutputStream.Write(crlf);
+				++objDataLinesWritten;
 			}
-			outputStringBuilder.AppendLine();
+			OutputStream.Write(crlf);
 
 			for (int i = 0; i < _AllVertexTextures.Length; ++i)
 			{
@@ -383,6 +428,77 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				writeIndividualFace(i, outputStringBuilder, ref nextGroup, ref nextMaterial, ref mustAddNewlineBeforeGroupOrMaterialDefinition);
 			}
 			outputStringBuilder.AppendLine();
+		}
+
+		private void checkForInterDataItemToBeWritten(Stream OutputStream, ref int ObjDataLinesWritten,
+			ref bool CheckInlineComments, ref int CurrentInlineComment,
+			ref bool CheckObjects, ref int CurrentObject,
+			ref bool CheckGroups, ref int CurrentGroup,
+			ref bool CheckMaterialsRef, ref int CurrentMaterialRef,
+			ref bool CheckSmoothing, ref int CurrentSmoothing)
+		{
+			Span<byte> intermediateByteSpan = Span<byte>.Empty;
+			ReadOnlySpan<byte> crlf = stackalloc byte[] {0x0d, 0x0a};
+
+			if (CheckInlineComments)
+			{
+				if (ObjDataLinesWritten >= _InlineCommentStartIndex[CurrentInlineComment])
+				{
+					Encoding.UTF8.GetBytes(_InlineCommentStrings[CurrentInlineComment], intermediateByteSpan);
+					OutputStream.Write(intermediateByteSpan);
+					OutputStream.Write(crlf);
+					++ObjDataLinesWritten;
+					++CurrentInlineComment;
+				}
+			}
+
+			if (CheckObjects)
+			{
+				if (ObjDataLinesWritten >= _AllObjects[CurrentObject]._ObjectStartIndex)
+				{
+					Encoding.UTF8.GetBytes(_AllObjects[CurrentObject]._ObjectName, intermediateByteSpan);
+					OutputStream.Write(intermediateByteSpan);
+					OutputStream.Write(crlf);
+					++ObjDataLinesWritten;
+					++CurrentObject;
+				}
+			}
+
+			if (CheckGroups)
+			{
+				if (ObjDataLinesWritten >= _AllGroups[CurrentGroup]._GroupStartIndex)
+				{
+					Encoding.UTF8.GetBytes(_AllGroups[CurrentGroup]._GroupName, intermediateByteSpan);
+					OutputStream.Write(intermediateByteSpan);
+					OutputStream.Write(crlf);
+					++ObjDataLinesWritten;
+					++CurrentGroup;
+				}
+			}
+
+			if (CheckMaterialsRef)
+			{
+				if (ObjDataLinesWritten >= _AllMaterials[CurrentMaterialRef]._MaterialStartIndex)
+				{
+					Encoding.UTF8.GetBytes(_AllMaterials[CurrentMaterialRef]._MaterialName, intermediateByteSpan);
+					OutputStream.Write(intermediateByteSpan);
+					OutputStream.Write(crlf);
+					++ObjDataLinesWritten;
+					++CurrentMaterialRef;
+				}
+			}
+
+			if (CheckSmoothing)
+			{
+				if (ObjDataLinesWritten >= _AllMaterials[CurrentSmoothing]._MaterialStartIndex)
+				{
+					Encoding.UTF8.GetBytes(_AllMaterials[CurrentSmoothing]._MaterialName, intermediateByteSpan);
+					OutputStream.Write(intermediateByteSpan);
+					OutputStream.Write(crlf);
+					++ObjDataLinesWritten;
+					++CurrentSmoothing;
+				}
+			}
 		}
 
 		private void writeIndividualFace(int I, StringBuilder OutputStringBuilder, ref int NextGroup,
