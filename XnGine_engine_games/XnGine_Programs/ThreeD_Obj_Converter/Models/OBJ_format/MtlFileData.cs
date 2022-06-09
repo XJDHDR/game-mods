@@ -7,17 +7,18 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Text;
-using System.Windows.Documents;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
 	internal readonly struct MtlFileData
 	{
-		/// <summary> Add your comments here, including newlines and the starting # for each line. </summary>
+		/// <summary> The header's comments, including newlines and the starting # for each line. </summary>
 		internal readonly string _HeaderComments;
+
+		internal readonly string[] _InlineCommentStrings;
+		internal readonly int[] _InlineCommentStartIndex;
 
 		internal readonly string[] _AllMaterialNames;
 		internal readonly Vector3[] _AllMaterialAmbientColours;
@@ -52,6 +53,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly string[] _AllMaterialBumpMaps;
 		internal readonly string[] _AllMaterialDisplacementMaps;
 		internal readonly string[] _AllMaterialStencilDecalTextures;
+
+
+		internal MtlFileData(Stream MtlDataStream)
+		{
+
+		}
 
 
 		internal void _Write(Stream OutputStream)
