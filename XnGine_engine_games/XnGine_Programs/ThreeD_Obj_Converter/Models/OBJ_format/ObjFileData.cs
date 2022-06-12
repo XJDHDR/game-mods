@@ -55,7 +55,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			_AllMaterials = Array.Empty<MaterialDefinition>();
 			_AllSmoothingGroups = Array.Empty<SmoothingGroup>();
 
-			using (StreamReader objDataStreamReader = new StreamReader(ObjDataStream))
+			using (StreamReader objDataStreamReader = new(ObjDataStream))
 			{
 				// Lists and StringBuilder used for temp storage of arrays and strings that are being constructed
 				List<string> inlineCommentStrings = new();
@@ -80,9 +80,10 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 				char[] whitespaceChars = {' ', '	'};
 
-				string? readString = objDataStreamReader.ReadLine()?.Trim();
 				for (int i = 0; i < int.MaxValue; ++i)
 				{
+					string? readString = objDataStreamReader.ReadLine()?.Trim();
+
 					// Check if the end of the stream has been reached.
 					if (readString == null)
 						break;

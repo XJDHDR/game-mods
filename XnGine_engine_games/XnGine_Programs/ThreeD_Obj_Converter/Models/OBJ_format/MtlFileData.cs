@@ -6,6 +6,8 @@
 //
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -20,130 +22,136 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly string[] _InlineCommentStrings;
 		internal readonly int[] _InlineCommentStartIndex;
 
-		internal readonly string[] _AllMaterialNames;
-		internal readonly Vector3[] _AllMaterialAmbientColours;
-		internal readonly Vector3[] _AllMaterialDiffuseColours;
-		internal readonly Vector3[] _AllMaterialSpecularColours;
-		internal readonly float[] _AllMaterialSpecularExponents;
-		internal readonly float[] _AllMaterialOpacities;
-		internal readonly Vector3[] _AllMaterialTransmissionFilterColours;
-		internal readonly float[] _AllMaterialOpticalDensities;
-
-		/// <summary>
-		/// Used to define the Illumination Models that are used for each material. The Models are as follows:<para />
-		/// 0. Color on and Ambient off<br/>
-		/// 1. Color on and Ambient on<br/>
-		/// 2. Highlight on<br/>
-		/// 3. Reflection on and Ray trace on<br/>
-		/// 4. Transparency: Glass on, Reflection: Ray trace on<br/>
-		/// 5. Reflection: Fresnel on and Ray trace on<br/>
-		/// 6. Transparency: Refraction on, Reflection: Fresnel off and Ray trace on<br/>
-		/// 7. Transparency: Refraction on, Reflection: Fresnel on and Ray trace on<br/>
-		/// 8. Reflection on and Ray trace off<br/>
-		/// 9. Transparency: Glass on, Reflection: Ray trace off<br/>
-		/// 10. Casts shadows onto invisible surfaces<br/>
-		/// </summary>
-		internal readonly byte[] _AllMaterialIlluminationModels;
-
-		internal readonly string[] _AllMaterialAmbientTextureMaps;
-		internal readonly string[] _AllMaterialDiffuseTextureMaps;
-		internal readonly string[] _AllMaterialSpecularColourTextureMaps;
-		internal readonly string[] _AllMaterialSpecularHighlightTextureMaps;
-		internal readonly string[] _AllMaterialAlphaTextureMaps;
-		internal readonly string[] _AllMaterialBumpMaps;
-		internal readonly string[] _AllMaterialDisplacementMaps;
-		internal readonly string[] _AllMaterialStencilDecalTextures;
-
+		internal readonly MaterialData[] _AllMaterials;
 
 		internal MtlFileData(Stream MtlDataStream)
 		{
+			_HeaderComments = string.Empty;
 
+			StringBuilder commonStringsBuilder = new();
+
+			using (StreamReader mtlDataStreamReader = new(MtlDataStream))
+			{
+				string? readString;
+
+				// Read the comments in the header.
+				for (int i = 0; i < int.MaxValue; ++i)
+				{
+					readString = mtlDataStreamReader.ReadLine()?.Trim();
+
+					// Check if the end of the stream has been reached.
+					if (readString == null)
+						break;
+
+					// Check if this is an empty line.
+					if (string.IsNullOrWhiteSpace(readString))
+						continue;
+
+					// Check if this is a comment
+					if (readString.StartsWith("#"))
+					{
+						// This line is a comment
+						commonStringsBuilder.Append(readString);
+						continue;
+					}
+
+					// Since this line is not a comment, move on to reading the other file data.
+					break;
+				}
+
+				// Skip past any empty lines between the header comments and data.
+				for (int i = 0; i < int.MaxValue; ++i)
+				{
+					readString = mtlDataStreamReader.ReadLine()?.Trim();
+
+					// Check if the end of the stream has been reached.
+					if (readString == null)
+						break;
+
+					// Check if this is an empty line.
+					if (string.IsNullOrWhiteSpace(readString))
+						continue;
+
+					// Since this line is not empty, move on to reading the other file data.
+					break;
+				}
+
+				//
+			}
+
+
+
+			List<MaterialData> allMaterialsList = new();
+
+
+			_AllMaterials = allMaterialsList.ToArray();
 		}
 
 
 		internal void _Write(Stream OutputStream)
 		{
+			Span<byte> intermediateByteSpan = Span<byte>.Empty;
+			ReadOnlySpan<byte> crlf = stackalloc byte[] {0x0d, 0x0a};
+			CultureInfo invar = CultureInfo.InvariantCulture;
 			StringBuilder outputStringBuilder = new();
 
-			outputStringBuilder.AppendLine(_HeaderComments);
-			outputStringBuilder.AppendLine();
+			Encoding.UTF8.GetBytes(_HeaderComments, intermediateByteSpan);
+			OutputStream.Write(intermediateByteSpan);
+			OutputStream.Write(crlf);
 
-			for (int i = 0; i < _AllMaterialNames.Length; ++i)
+			for (int i = 0; i < _AllMaterials.Length; ++i)
 			{
-				writeIndividualMaterialToStringBuilder(outputStringBuilder, i);
-			}
-
-			StringBuilder.ChunkEnumerator stringBuilderChunks = outputStringBuilder.GetChunks();
-			foreach (ReadOnlyMemory<char> individualStringBuilderChunk in stringBuilderChunks)
-			{
-				Span<byte> sBChunkBytes = new byte[individualStringBuilderChunk.Length];
-				Encoding.ASCII.GetBytes(individualStringBuilderChunk.Span, sBChunkBytes);
-				OutputStream.Write(sBChunkBytes);
+				_AllMaterials[i]._Write(OutputStream);
 			}
 		}
 
-		private void writeIndividualMaterialToStringBuilder(StringBuilder OutputStringBuilder, int I)
+		internal readonly struct MaterialData
 		{
-			OutputStringBuilder.AppendLine($"newmtl {_AllMaterialNames[I]}");
+			internal readonly string _Name;
+			internal readonly Vector3 _AmbientColour;
+			internal readonly Vector3 _DiffuseColour;
+			internal readonly Vector3 _SpecularColour;
+			internal readonly float _SpecularExponent;
+			internal readonly float _Opacity;
+			internal readonly Vector3 _TransmissionFilterColour;
+			internal readonly float _OpticalDensity;
 
-			if (I < _AllMaterialAmbientColours.Length)
-				OutputStringBuilder.AppendLine(
-					$"Ka {_AllMaterialAmbientColours[I].X} {_AllMaterialAmbientColours[I].Y} {_AllMaterialAmbientColours[I].Z}"
-				);
+			/// <summary> Used to define the material's Illumination Model. </summary>
+			internal readonly IlluminationModels _IlluminationModel;
 
-			if (I < _AllMaterialDiffuseColours.Length)
-				OutputStringBuilder.AppendLine(
-					$"Kd {_AllMaterialDiffuseColours[I].X} {_AllMaterialDiffuseColours[I].Y} {_AllMaterialDiffuseColours[I].Z}"
-				);
-
-			if (I < _AllMaterialSpecularColours.Length)
-				OutputStringBuilder.AppendLine(
-					$"Ks {_AllMaterialSpecularColours[I].X} {_AllMaterialSpecularColours[I].Y} {_AllMaterialSpecularColours[I].Z}"
-				);
-
-			if (I < _AllMaterialSpecularExponents.Length)
-				OutputStringBuilder.AppendLine($"Ns {_AllMaterialSpecularExponents[I]}");
-
-			if (I < _AllMaterialOpacities.Length)
-				OutputStringBuilder.AppendLine($"d {_AllMaterialOpacities[I]}");
-
-			if (I < _AllMaterialTransmissionFilterColours.Length)
-				OutputStringBuilder.AppendLine(
-					$"Tf {_AllMaterialTransmissionFilterColours[I].X} {_AllMaterialTransmissionFilterColours[I].Y} {_AllMaterialTransmissionFilterColours[I].Z}"
-				);
-
-			if (I < _AllMaterialOpticalDensities.Length)
-				OutputStringBuilder.AppendLine($"Ni {_AllMaterialOpticalDensities[I]}");
-
-			if (I < _AllMaterialIlluminationModels.Length)
-				OutputStringBuilder.AppendLine($"illum {_AllMaterialIlluminationModels[I]}");
+			internal readonly string _AmbientTextureMap;
+			internal readonly string _DiffuseTextureMap;
+			internal readonly string _SpecularColourTextureMap;
+			internal readonly string _SpecularHighlightTextureMap;
+			internal readonly string _AlphaTextureMap;
+			internal readonly string _BumpMap;
+			internal readonly string _DisplacementMap;
+			internal readonly string _StencilDecalTexture;
 
 
-			if (I < _AllMaterialAmbientTextureMaps.Length)
-				OutputStringBuilder.AppendLine($"map_Ka {_AllMaterialAmbientTextureMaps[I]}");
+			internal MaterialData(Stream MtlDataStream)
+			{
+			}
 
-			if (I < _AllMaterialDiffuseTextureMaps.Length)
-				OutputStringBuilder.AppendLine($"map_Kd {_AllMaterialDiffuseTextureMaps[I]}");
+			internal void _Write(Stream OutputStream)
+			{
+			}
 
-			if (I < _AllMaterialSpecularColourTextureMaps.Length)
-				OutputStringBuilder.AppendLine($"map_Ks {_AllMaterialSpecularColourTextureMaps[I]}");
-
-			if (I < _AllMaterialSpecularHighlightTextureMaps.Length)
-				OutputStringBuilder.AppendLine($"map_Ns {_AllMaterialSpecularHighlightTextureMaps[I]}");
-
-			if (I < _AllMaterialAlphaTextureMaps.Length)
-				OutputStringBuilder.AppendLine($"map_d {_AllMaterialAlphaTextureMaps[I]}");
-
-			if (I < _AllMaterialBumpMaps.Length)
-				OutputStringBuilder.AppendLine($"bump {_AllMaterialBumpMaps[I]}");
-
-			if (I < _AllMaterialDisplacementMaps.Length)
-				OutputStringBuilder.AppendLine($"disp {_AllMaterialDisplacementMaps[I]}");
-
-			if (I < _AllMaterialStencilDecalTextures.Length)
-				OutputStringBuilder.AppendLine($"decal {_AllMaterialStencilDecalTextures[I]}");
-
-			OutputStringBuilder.AppendLine();
+			internal enum IlluminationModels
+			{
+				Undefined													= -1,
+				ColorOnAndAmbientOff										=  0,
+				ColorOnAndAmbientOn											=  1,
+				HighlightOn													=  2,
+				ReflectionOnAndRayTraceOn									=  3,
+				TransparencyGlassOnReflectionRayTraceOn						=  4,
+				ReflectionFresnelOnAndRayTraceOn							=  5,
+				TransparencyRefractionOnReflectionFresnelOffAndRayTraceOn	=  6,
+				TransparencyRefractionOnReflectionFresnelOnAndRayTraceOn	=  7,
+				ReflectionOnAndRayTraceOff									=  8,
+				TransparencyGlassOnReflectionRayTraceOff					=  9,
+				CastsShadowsOntoInvisibleSurfaces							= 10
+			}
 		}
 	}
 }
