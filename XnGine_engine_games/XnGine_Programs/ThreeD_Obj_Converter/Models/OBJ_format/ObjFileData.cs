@@ -80,7 +80,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 				char[] whitespaceChars = {' ', '	'};
 
-				for (int i = 0; i < int.MaxValue; ++i)
+				for (int i = 1; i < int.MaxValue; ++i)
 				{
 					string? readString = objDataStreamReader.ReadLine()?.Trim();
 
@@ -126,6 +126,9 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 						whitespaceChars, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
 						);
 
+					// Every line in OBJ data that is not a comment or empty line has at least two parts: The data element declaration,
+					// and the data associated with that element. If there is less than this, the read data is not valid.
+					// Thus, trigger an error and skip to the next line.
 					if (readSubstrings.Length < 2)
 					{
 						messagesStringBuilder.AppendLine($"Error: Line {i} in the OBJ stream does not contain recognised info and will be skipped:");
@@ -134,6 +137,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 						continue;
 					}
 
+					readSubstrings[0] = readSubstrings[0].ToLower();
 					switch (readSubstrings[0])
 					{
 						case "mtllib":
@@ -205,7 +209,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								messagesStringBuilder.AppendLine();
 								break;
 							}
-
 							allSmoothingGroups.Add(new SmoothingGroup(readSubstrings[1], linesOfObjDataRead));
 							break;
 
