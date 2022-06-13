@@ -29,9 +29,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			_HeaderComments = string.Empty;
 			_InlineCommentStrings = Array.Empty<string>();
 			_InlineCommentStartIndex = Array.Empty<int>();
-			List<MaterialData> allMaterialsList = new();
+			_AllMaterials = Array.Empty<MaterialData>();
+
 			List<string> inlineCommentStrings = new();
 			List<int> inlineCommentStartIndex = new();
+			List<MaterialData> allMaterialsList = new();
 
 			int lineNumber = 0;
 			StringBuilder commonStringsBuilder = new();
@@ -90,19 +92,26 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 						continue;
 					}
 
-					// Since this line is the start of the material definition, run the material definition constructor.
+					// Otherwise, since a material definition has been found, break out of loop and proceed to material construction loop.
+					break;
+				}
+
+				// Read all Material definitions and associated data.
+				while (true)
+				{
+					// Ignore null warning here. ReadString will only be null if the end of file is reached, which is already handled.
 					allMaterialsList.Add(new MaterialData(
-						mtlDataStreamReader, messageStringBuilder, in readString, ref lineNumber, ref inlineCommentStrings,
+						mtlDataStreamReader, messageStringBuilder, in readString!, ref lineNumber, ref inlineCommentStrings,
 						ref inlineCommentStartIndex, out readString, out bool endOfFileReached)
 					);
 
-					// TODO: Use new read string
 					if (endOfFileReached)
 						break;
 				}
 			}
 
-			_AllMaterials = allMaterialsList.ToArray();
+			if (allMaterialsList.Count > 0)
+				_AllMaterials = allMaterialsList.ToArray();
 		}
 
 
@@ -152,11 +161,9 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				out string NextMaterialName, out bool EndOfFileReached)
 			{
 				// Fill the Name field with the string passed to the constructor.
-				if (ThisMaterialName.StartsWith("newmtl ", StringComparison.OrdinalIgnoreCase))
-					_Name = ThisMaterialName.Remove(0, 7);
-
-				else
-					_Name = ThisMaterialName;
+				_Name = ThisMaterialName.StartsWith("newmtl ", StringComparison.OrdinalIgnoreCase) ?
+					ThisMaterialName.Remove(0, 7) :
+					ThisMaterialName;
 
 				// Pre-populate the other fields with empty/invalid data, just in case they don't get filled below.
 				Vector3 invalidVector3 = new Vector3(-1,-1,-1);
