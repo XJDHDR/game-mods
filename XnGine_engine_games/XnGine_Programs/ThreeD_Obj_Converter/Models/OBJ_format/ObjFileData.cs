@@ -23,7 +23,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly string[] _InlineCommentStrings;
 		internal readonly int[] _InlineCommentStartIndex;
 
-		internal readonly string[] _MaterialLibraryFilenames;
+		internal readonly MaterialLibraryDefinition[] _MaterialLibraries;
 
 		internal readonly Vector4[] _AllVertices;
 		internal readonly Vector3[] _AllVertexTextures;
@@ -39,13 +39,13 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly SmoothingGroup[] _AllSmoothingGroups;
 
 
-		internal ObjFileData(Stream ObjDataStream)
+		internal ObjFileData(Stream ObjDataStream, string FolderContainingObj)
 		{
 			_HeaderComments = string.Empty;
 			// Assign an empty array to these fields until the OBJ stream has been completely read.
 			_InlineCommentStrings = Array.Empty<string>();
 			_InlineCommentStartIndex = Array.Empty<int>();
-			_MaterialLibraryFilenames = Array.Empty<string>();
+			_MaterialLibraries = Array.Empty<MaterialLibraryDefinition>();
 			_AllVertices = Array.Empty<Vector4>();
 			_AllVertexTextures = Array.Empty<Vector3>();
 			_AllVertexNormals = Array.Empty<Vector3>();
@@ -60,7 +60,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				// Lists and StringBuilder used for temp storage of arrays and strings that are being constructed
 				List<string> inlineCommentStrings = new();
 				List<int> inlineCommentStartIndex = new();
-				List<string> materialLibraryFilenames = new();
+				List<MaterialLibraryDefinition> materialLibraryFilenames = new();
 				List<Vector4> allVertices = new();
 				List<Vector3> allVertexTextures = new();
 				List<Vector3> allVertexNormals = new();
@@ -146,7 +146,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							{
 								commonStringsBuilder.Append(readSubstrings[j]);
 							}
-							materialLibraryFilenames.Add(commonStringsBuilder.ToString());
+							materialLibraryFilenames.Add(new MaterialLibraryDefinition(commonStringsBuilder.ToString(), FolderContainingObj));
 							commonStringsBuilder.Clear();
 							break;
 
@@ -154,10 +154,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a Face
 							if (readSubstrings.Length < 4)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a Face in the OBJ stream has ");
-								messagesStringBuilder.AppendLine("less than 3 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a Face", "3 parts", in readString);
 								break;
 							}
 							allFaces.Add(new FaceDefinition(readSubstrings));
@@ -167,10 +164,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a point where all the subsequent entries are part of the same group.
 							if (readSubstrings.Length < 2)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a group in the OBJ stream has ");
-								messagesStringBuilder.AppendLine("less than 2 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a group", "2 parts", in readString);
 								break;
 							}
 							for (int j = 1; j < readSubstrings.Length; ++j)
@@ -185,10 +179,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a point where all the subsequent entries are part of the same object.
 							if (readSubstrings.Length < 2)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining an object in the OBJ stream has ");
-								messagesStringBuilder.AppendLine("less than 2 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "an object", "2 parts", in readString);
 								break;
 							}
 							for (int j = 1; j < readSubstrings.Length; ++j)
@@ -203,10 +194,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a smoothing group, or disables smoothing.
 							if (readSubstrings.Length is not 2)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a smoothing group in the OBJ stream ");
-								messagesStringBuilder.AppendLine("does not have 2 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a smoothing group", "2 parts", in readString);
 								break;
 							}
 							allSmoothingGroups.Add(new SmoothingGroup(readSubstrings[1], linesOfObjDataRead));
@@ -216,10 +204,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a point where all the subsequent faces must use the specified material reference.
 							if (readSubstrings.Length is not 2)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a material reference in the OBJ stream ");
-								messagesStringBuilder.AppendLine("does not have 2 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a material reference", "2 parts", in readString);
 								break;
 							}
 							allMaterials.Add(new MaterialDefinition(readSubstrings[1], linesOfObjDataRead));
@@ -229,10 +214,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a Vertex
 							if (readSubstrings.Length is not (4 or 5))
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex in the OBJ stream does not ");
-								messagesStringBuilder.AppendLine("have 3 or 4 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a Vertex", "3 or 4 parts", in readString);
 								break;
 							}
 
@@ -253,10 +235,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a Vertex Normal
 							if (readSubstrings.Length is not 4)
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex Normal in the OBJ stream does not ");
-								messagesStringBuilder.AppendLine("have 4 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a Vertex Normal", "4 parts", in readString);
 								break;
 							}
 
@@ -271,10 +250,8 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a Vertex Texture
 							if (readSubstrings.Length is not (2 or 3 or 4))
 							{
-								messagesStringBuilder.Append($"Error: Line {i} defining a Vertex Texture in the OBJ stream does not ");
-								messagesStringBuilder.AppendLine("have between 2 and 4 parts defined, and will be skipped:");
-								messagesStringBuilder.AppendLine($"{readString}");
-								messagesStringBuilder.AppendLine();
+								notEnoughPartsError(messagesStringBuilder, in i, "a Vertex Texture",
+									"between 2 and 4 parts", in readString);
 								break;
 							}
 
@@ -300,7 +277,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					_InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
 
 				if (materialLibraryFilenames.Count != 0)
-					_MaterialLibraryFilenames = materialLibraryFilenames.ToArray();
+					_MaterialLibraries = materialLibraryFilenames.ToArray();
 
 				if (allVertices.Count != 0)
 					_AllVertices = allVertices.ToArray();
@@ -358,7 +335,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			OutputStream.Write(crlf);
 
 			// Add the material library references after the header
-			for (int i = 0; i < _MaterialLibraryFilenames.Length; ++i)
+			for (int i = 0; i < _MaterialLibraries.Length; ++i)
 			{
 				checkForInterDataItemToBeWritten(OutputStream, ref objDataLinesWritten,
 					ref checkInlineComments, ref currentInlineComment,
@@ -367,7 +344,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
-				Encoding.UTF8.GetBytes($"mtllib {_MaterialLibraryFilenames[i]}", intermediateByteSpan);
+				Encoding.UTF8.GetBytes($"mtllib {_MaterialLibraries[i]._LibName}", intermediateByteSpan);
 				OutputStream.Write(intermediateByteSpan);
 				OutputStream.Write(crlf);
 				++objDataLinesWritten;
@@ -489,6 +466,17 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			OutputStream.Write(crlf);
 		}
 
+
+		// ==== Private methods ====
+		private static void notEnoughPartsError(StringBuilder MessageStringBuilder, in int LineNumber,
+			in string ElementName, in string NumberOfParts, in string ReadString)
+		{
+			MessageStringBuilder.Append($"Error: Line {LineNumber} defining {ElementName} in the OBJ stream ");
+			MessageStringBuilder.AppendLine($"does not have {NumberOfParts} defined, and will be skipped:");
+			MessageStringBuilder.AppendLine($"{ReadString}");
+			MessageStringBuilder.AppendLine();
+		}
+
 		/// <summary>
 		///
 		/// </summary>
@@ -594,182 +582,212 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				}
 			}
 		}
-	}
 
-	/// <summary>
-	/// Defines all of the corners of a single face.
-	/// </summary>
-	internal readonly struct FaceDefinition
-	{
-		/// <summary>
-		/// Array of all the Face Corners that make up an individual face.
-		/// </summary>
-		internal readonly FaceCornerDefinition[] _Corners;
-
-		/// <summary>
-		/// Construct a Face from a Face definition string extracted from an OBJ file.
-		/// </summary>
-		/// <param name="FaceStringParts">The entire string from an OBJ that defines an individual face.</param>
-		internal FaceDefinition(string[] FaceStringParts)
+		internal readonly struct MaterialLibraryDefinition
 		{
-			// Are there any empty strings in the array?
-			int arrayElemsEmptyCount = 0;
-			for (int i = 0; i < FaceStringParts.Length; ++i)
-			{
-				if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
-					++arrayElemsEmptyCount;
-			}
+			internal readonly string _LibName;
+			internal readonly MtlFileData _MtlData;
 
-			// Did the user pass in the Face definition prefix?
-			bool firstPartIsFaceDefinition = FaceStringParts[0].Equals("f", StringComparison.OrdinalIgnoreCase);
-			_Corners = firstPartIsFaceDefinition ?
-				new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount - 1] :
-				new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount];
-
-			arrayElemsEmptyCount = 0;
-			for (int i = 0; i < _Corners.Length; ++i)
+			internal MaterialLibraryDefinition(string LibName, string FolderContainingObj)
 			{
-				// If this array index has an empty string, skip past it.
-				if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
+				_LibName = LibName;
+
+				// First, check if the LibName is an absolute path.
+				// If so, immediately read the contents of the MTL file.
+				if (File.Exists(LibName))
 				{
-					++arrayElemsEmptyCount;
-					continue;
+					_MtlData = new MtlFileData(new FileStream(LibName, FileMode.Open, FileAccess.Read, FileShare.Read));
+					return;
 				}
 
-				int currentIndexElement;
-				if (firstPartIsFaceDefinition)
-					currentIndexElement = i + arrayElemsEmptyCount + 1;
+				// Otherwise, check if it is a path relative to the folder containing the OBJ file.
+				string libAbsolutePath = $"{FolderContainingObj}/{LibName}";
+				if (File.Exists(libAbsolutePath))
+				{
+					_MtlData = new MtlFileData(new FileStream(libAbsolutePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+					return;
+				}
 
-				else
-					currentIndexElement = i + arrayElemsEmptyCount;
-
-				_Corners[i] = new FaceCornerDefinition(FaceStringParts[currentIndexElement]);
+				// If it's not a relative path either, the MTL data can't be read.
+				_MtlData = new MtlFileData();
 			}
 		}
-	}
-
-	/// <summary>
-	/// Used to hold all the information that defines a single corner in a face.
-	/// </summary>
-	internal readonly struct FaceCornerDefinition
-	{
-		// Don't change any Int into a UInt. The specification allows negative values (offset from end instead of start)
-		/// <summary> The index number for the vertex used for this corner. </summary>
-		internal readonly int _VertexIndex;
-
-		/// <summary> Does this vertex have a texture coordinate attached? </summary>
-		internal readonly bool _IsVertexTextureUsed = false;
-		/// <summary> The index number for the vertex texture coordinate used for this corner. </summary>
-		internal readonly int _VertexTextureIndex = 0;
-
-		/// <summary> Does this vertex have a normal attached? </summary>
-		internal readonly bool _IsVertexNormalUsed = false;
-		/// <summary> The index number for the vertex normal used for this corner. </summary>
-		internal readonly int _VertexNormalIndex = 0;
 
 		/// <summary>
-		/// Construct a Face Corner from a correctly formatted string extracted from an OBJ file.
+		/// Defines all of the corners of a single face.
 		/// </summary>
-		/// <param name="CurrentFaceStringPart">The part of the string from the Face definition that defines the indexes used.</param>
-		/// <exception cref="ArgumentException">Thrown if the <paramref name="CurrentFaceStringPart"/> is empty, null, or only contain whitespaces.</exception>
-		internal FaceCornerDefinition(string CurrentFaceStringPart)
+		internal readonly struct FaceDefinition
 		{
-			string[] indicesInString = CurrentFaceStringPart.Split('/', StringSplitOptions.TrimEntries);
+			/// <summary>
+			/// Array of all the Face Corners that make up an individual face.
+			/// </summary>
+			internal readonly FaceCornerDefinition[] _Corners;
 
-			switch (indicesInString.Length)
+			/// <summary>
+			/// Construct a Face from a Face definition string extracted from an OBJ file.
+			/// </summary>
+			/// <param name="FaceStringParts">The entire string from an OBJ that defines an individual face.</param>
+			internal FaceDefinition(string[] FaceStringParts)
 			{
-				case 0:
-					throw new ArgumentException($"The passed in string ({CurrentFaceStringPart}) is empty, which is not allowed.");
+				// Are there any empty strings in the array?
+				int arrayElemsEmptyCount = 0;
+				for (int i = 0; i < FaceStringParts.Length; ++i)
+				{
+					if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
+						++arrayElemsEmptyCount;
+				}
 
-				case 1:
-					// Only the Vertex parameter is defined.
-					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
-					break;
+				// Did the user pass in the Face definition prefix?
+				bool firstPartIsFaceDefinition = FaceStringParts[0].Equals("f", StringComparison.OrdinalIgnoreCase);
+				_Corners = firstPartIsFaceDefinition ?
+					new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount - 1] :
+					new FaceCornerDefinition[FaceStringParts.Length - arrayElemsEmptyCount];
 
-				case 2:
-					// This has the Vertex Texture parameter defined as well.
-					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
-					_IsVertexTextureUsed = true;
-					_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
-					break;
-
-				default:
-				// More than 3 parts in this string. Only pay attention to the first 3 and ignore the rest.
-				// ReSharper disable once RedundantCaseLabel
-				case 3:
-					// This has the Vertex Normal parameter defined as well, with or without the Texture Normal too.
-					_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
-					_IsVertexNormalUsed = true;
-					_VertexNormalIndex = int.Parse(indicesInString[2], NumberStyles.Integer);
-
-					if (indicesInString[1].Length > 0)
+				arrayElemsEmptyCount = 0;
+				for (int i = 0; i < _Corners.Length; ++i)
+				{
+					// If this array index has an empty string, skip past it.
+					if (string.IsNullOrWhiteSpace(FaceStringParts[i]))
 					{
-						_IsVertexTextureUsed = true;
-						_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
+						++arrayElemsEmptyCount;
+						continue;
 					}
 
-					break;
+					int currentIndexElement;
+					if (firstPartIsFaceDefinition)
+						currentIndexElement = i + arrayElemsEmptyCount + 1;
+
+					else
+						currentIndexElement = i + arrayElemsEmptyCount;
+
+					_Corners[i] = new FaceCornerDefinition(FaceStringParts[currentIndexElement]);
+				}
 			}
 		}
-	}
 
-	/// <summary>
-	/// Struct used to record the name and position of a Group definition.
-	/// </summary>
-	internal readonly struct GroupDefinition
-	{
-		internal readonly string _GroupName;
-		internal readonly int _GroupStartIndex;
-
-		internal GroupDefinition(string Name, int StartIndex)
+		/// <summary>
+		/// Used to hold all the information that defines a single corner in a face.
+		/// </summary>
+		internal readonly struct FaceCornerDefinition
 		{
-			_GroupName = Name;
-			_GroupStartIndex = StartIndex;
+			// Don't change any Int into a UInt. The specification allows negative values (offset from end instead of start)
+			/// <summary> The index number for the vertex used for this corner. </summary>
+			internal readonly int _VertexIndex;
+
+			/// <summary> Does this vertex have a texture coordinate attached? </summary>
+			internal readonly bool _IsVertexTextureUsed = false;
+			/// <summary> The index number for the vertex texture coordinate used for this corner. </summary>
+			internal readonly int _VertexTextureIndex = 0;
+
+			/// <summary> Does this vertex have a normal attached? </summary>
+			internal readonly bool _IsVertexNormalUsed = false;
+			/// <summary> The index number for the vertex normal used for this corner. </summary>
+			internal readonly int _VertexNormalIndex = 0;
+
+			/// <summary>
+			/// Construct a Face Corner from a correctly formatted string extracted from an OBJ file.
+			/// </summary>
+			/// <param name="CurrentFaceStringPart">The part of the string from the Face definition that defines the indexes used.</param>
+			/// <exception cref="ArgumentException">Thrown if the <paramref name="CurrentFaceStringPart"/> is empty, null, or only contain whitespaces.</exception>
+			internal FaceCornerDefinition(string CurrentFaceStringPart)
+			{
+				string[] indicesInString = CurrentFaceStringPart.Split('/', StringSplitOptions.TrimEntries);
+
+				switch (indicesInString.Length)
+				{
+					case 0:
+						throw new ArgumentException($"The passed in string ({CurrentFaceStringPart}) is empty, which is not allowed.");
+
+					case 1:
+						// Only the Vertex parameter is defined.
+						_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+						break;
+
+					case 2:
+						// This has the Vertex Texture parameter defined as well.
+						_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+						_IsVertexTextureUsed = true;
+						_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
+						break;
+
+					default:
+					// More than 3 parts in this string. Only pay attention to the first 3 and ignore the rest.
+					// ReSharper disable once RedundantCaseLabel
+					case 3:
+						// This has the Vertex Normal parameter defined as well, with or without the Texture Normal too.
+						_VertexIndex = int.Parse(indicesInString[0], NumberStyles.Integer);
+						_IsVertexNormalUsed = true;
+						_VertexNormalIndex = int.Parse(indicesInString[2], NumberStyles.Integer);
+
+						if (indicesInString[1].Length > 0)
+						{
+							_IsVertexTextureUsed = true;
+							_VertexTextureIndex = int.Parse(indicesInString[1], NumberStyles.Integer);
+						}
+
+						break;
+				}
+			}
 		}
-	}
 
-	/// <summary>
-	/// Struct used to record the name and position of a Material Reference.
-	/// </summary>
-	internal readonly struct MaterialDefinition
-	{
-		internal readonly string _MaterialName;
-		internal readonly int _MaterialStartIndex;
-
-		internal MaterialDefinition(string MaterialReference, int StartIndex)
+		/// <summary>
+		/// Struct used to record the name and position of a Group definition.
+		/// </summary>
+		internal readonly struct GroupDefinition
 		{
-			_MaterialName = MaterialReference;
-			_MaterialStartIndex = StartIndex;
+			internal readonly string _GroupName;
+			internal readonly int _GroupStartIndex;
+
+			internal GroupDefinition(string Name, int StartIndex)
+			{
+				_GroupName = Name;
+				_GroupStartIndex = StartIndex;
+			}
 		}
-	}
 
-	/// <summary>
-	/// Struct used to record the name and position of a Object definition.
-	/// </summary>
-	internal readonly struct ObjectDefinition
-	{
-		internal readonly string _ObjectName;
-		internal readonly int _ObjectStartIndex;
-
-		internal ObjectDefinition(string Name, int StartIndex)
+		/// <summary>
+		/// Struct used to record the name and position of a Material Reference.
+		/// </summary>
+		internal readonly struct MaterialDefinition
 		{
-			_ObjectName = Name;
-			_ObjectStartIndex = StartIndex;
+			internal readonly string _MaterialName;
+			internal readonly int _MaterialStartIndex;
+
+			internal MaterialDefinition(string MaterialReference, int StartIndex)
+			{
+				_MaterialName = MaterialReference;
+				_MaterialStartIndex = StartIndex;
+			}
 		}
-	}
 
-	/// <summary>
-	/// Struct used to record the name and position of a Smoothing Group.
-	/// </summary>
-	internal readonly struct SmoothingGroup
-	{
-		internal readonly string _SmoothShadingGroup;
-		internal readonly int _SmoothingStartIndex;
-
-		internal SmoothingGroup(string SmoothShadingGroup, int StartIndex)
+		/// <summary>
+		/// Struct used to record the name and position of a Object definition.
+		/// </summary>
+		internal readonly struct ObjectDefinition
 		{
-			_SmoothShadingGroup = SmoothShadingGroup;
-			_SmoothingStartIndex = StartIndex;
+			internal readonly string _ObjectName;
+			internal readonly int _ObjectStartIndex;
+
+			internal ObjectDefinition(string Name, int StartIndex)
+			{
+				_ObjectName = Name;
+				_ObjectStartIndex = StartIndex;
+			}
+		}
+
+		/// <summary>
+		/// Struct used to record the name and position of a Smoothing Group.
+		/// </summary>
+		internal readonly struct SmoothingGroup
+		{
+			internal readonly string _SmoothShadingGroup;
+			internal readonly int _SmoothingStartIndex;
+
+			internal SmoothingGroup(string SmoothShadingGroup, int StartIndex)
+			{
+				_SmoothShadingGroup = SmoothShadingGroup;
+				_SmoothingStartIndex = StartIndex;
+			}
 		}
 	}
 }

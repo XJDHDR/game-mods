@@ -29,8 +29,13 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 		//internal readonly uint _UnknownData2;
 		internal readonly int _PlaneListOffset;
 
+		// This data is not part of the 3D format. It is used to help read it.
+		internal readonly long _StreamHeaderStartPos;
+
 		internal ThreeDHeader(BinaryReader HeaderBinaryReader, out bool WasSuccessful)
 		{
+			_StreamHeaderStartPos = HeaderBinaryReader.BaseStream.Position;
+
 			byte readByte = HeaderBinaryReader.ReadByte();
 			if (readByte != 0x76)
 			{
