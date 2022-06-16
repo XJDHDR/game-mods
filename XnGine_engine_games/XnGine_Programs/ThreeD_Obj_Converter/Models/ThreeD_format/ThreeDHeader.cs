@@ -15,13 +15,13 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 	internal readonly struct ThreeDHeader
 	{
 		internal readonly float _Version;
-		internal readonly int _PointStructCount;
-		internal readonly int _PlaneStructCount;
+		internal readonly int _PointCount;
+		internal readonly int _PlaneCount;
 		internal readonly int _OriginToMostDistantPointRadius;
 		//internal readonly ulong _NullBytes1;
-		internal readonly int _PlaneDataListOffset;
-		internal readonly int _ObjectDataListOffset;
-		internal readonly int _ObjectDataListElementCount;
+		internal readonly int _PlaneDataOffset;
+		internal readonly int _ObjectDataOffset;
+		internal readonly int _ObjectDataCount;
 		//internal readonly uint _UnknownData1;
 		//internal readonly ulong _NullBytes2;
 		internal readonly int _PointListOffset;
@@ -45,12 +45,12 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 					"Error: Unexpected data read from 3D file");
 				WasSuccessful = false;
 				_Version = 0;
-				_PointStructCount = 0;
-				_PlaneStructCount = 0;
+				_PointCount = 0;
+				_PlaneCount = 0;
 				_OriginToMostDistantPointRadius = 0;
-				_PlaneDataListOffset = 0;
-				_ObjectDataListOffset = 0;
-				_ObjectDataListElementCount = 0;
+				_PlaneDataOffset = 0;
+				_ObjectDataOffset = 0;
+				_ObjectDataCount = 0;
 				_PointListOffset = 0;
 				_NormalListOffset = 0;
 				_PlaneListOffset = 0;
@@ -64,15 +64,15 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			}
 			_Version = float.Parse(versionString, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture.NumberFormat);
 
-			_PointStructCount = HeaderBinaryReader.ReadInt32();
-			_PlaneStructCount = HeaderBinaryReader.ReadInt32();
+			_PointCount = HeaderBinaryReader.ReadInt32();
+			_PlaneCount = HeaderBinaryReader.ReadInt32();
 			_OriginToMostDistantPointRadius = HeaderBinaryReader.ReadInt32();
 
 			HeaderBinaryReader.BaseStream.Position += 8;
 
-			_PlaneDataListOffset = HeaderBinaryReader.ReadInt32();
-			_ObjectDataListOffset = HeaderBinaryReader.ReadInt32();
-			_ObjectDataListElementCount = HeaderBinaryReader.ReadInt32();
+			_PlaneDataOffset = HeaderBinaryReader.ReadInt32();
+			_ObjectDataOffset = HeaderBinaryReader.ReadInt32();
+			_ObjectDataCount = HeaderBinaryReader.ReadInt32();
 
 			HeaderBinaryReader.BaseStream.Position += (4 + 8);
 
