@@ -267,6 +267,30 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				EndOfFileReached = false;
 			}
 
+			internal MaterialData(string Name, Vector3 AmbientColour, Vector3 DiffuseColour, Vector3 SpecularColour, float SpecularExponent,
+				float Opacity, TransmissionColourFilter TransmissionFilterColour, float OpticalDensity, IlluminationModels IlluminationModel,
+				string AmbientTextureMap, string DiffuseTextureMap, string SpecularColourTextureMap, string SpecularHighlightTextureMap,
+				string AlphaTextureMap, string BumpMap, string DisplacementMap, string StencilDecalTexture)
+			{
+				_Name = Name;
+				_AmbientColour = AmbientColour;
+				_DiffuseColour = DiffuseColour;
+				_SpecularColour = SpecularColour;
+				_SpecularExponent = SpecularExponent;
+				_Opacity = Opacity;
+				_TransmissionFilterColour = TransmissionFilterColour;
+				_OpticalDensity = OpticalDensity;
+				_IlluminationModel = IlluminationModel;
+				_AmbientTextureMap = AmbientTextureMap;
+				_DiffuseTextureMap = DiffuseTextureMap;
+				_SpecularColourTextureMap = SpecularColourTextureMap;
+				_SpecularHighlightTextureMap = SpecularHighlightTextureMap;
+				_AlphaTextureMap = AlphaTextureMap;
+				_BumpMap = BumpMap;
+				_DisplacementMap = DisplacementMap;
+				_StencilDecalTexture = StencilDecalTexture;
+			}
+
 			internal void _Write(Stream OutputStream)
 			{
 			}

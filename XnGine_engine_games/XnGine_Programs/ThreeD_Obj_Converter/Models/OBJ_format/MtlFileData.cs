@@ -131,6 +131,15 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				MessageBox.Show(messageStringBuilder.ToString());
 		}
 
+		internal MtlFileData(string HeaderComments, string[] InlineCommentStrings,
+			int[] InlineCommentStartIndex, MaterialData[] AllMaterials)
+		{
+			_HeaderComments = HeaderComments;
+			_InlineCommentStrings = InlineCommentStrings;
+			_InlineCommentStartIndex = InlineCommentStartIndex;
+			_AllMaterials = AllMaterials;
+		}
+
 
 		// ==== Internal methods ====
 		internal void _Write(Stream OutputStream)

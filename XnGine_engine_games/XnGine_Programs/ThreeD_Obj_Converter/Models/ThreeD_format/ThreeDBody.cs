@@ -56,6 +56,15 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 				_ObjectDataList[i] = new ObjectData(DataBinaryReader);
 			}
 		}
+
+		internal ThreeDBody(Point[] PointLists, Plane[] PlaneLists, Point[] NormalLists, PlaneData[] PlaneDataList, ObjectData[] ObjectDataList)
+		{
+			_PointLists = PointLists;
+			_PlaneLists = PlaneLists;
+			_NormalLists = NormalLists;
+			_PlaneDataList = PlaneDataList;
+			_ObjectDataList = ObjectDataList;
+		}
 	}
 
 	internal readonly struct Point
@@ -69,6 +78,13 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			_X = DataBinaryReader.ReadInt32();
 			_Y = DataBinaryReader.ReadInt32();
 			_Z = DataBinaryReader.ReadInt32();
+		}
+
+		internal Point(int X, int Y, int Z)
+		{
+			_X = X;
+			_Y = Y;
+			_Z = Z;
 		}
 	}
 
@@ -103,6 +119,14 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			}
 		}
 
+		internal Plane(sbyte PlanePointCount, byte TextureImageIndex,short TextureFileIndex, PlanePoint[] PlanePoints)
+		{
+			_PlanePointCount = PlanePointCount;
+			_TextureImageIndex = TextureImageIndex;
+			_TextureFileIndex = TextureFileIndex;
+			_PlanePoints = PlanePoints;
+		}
+
 		internal readonly struct PlanePoint
 		{
 			internal readonly int _PointOffset;
@@ -114,6 +138,13 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 				_PointOffset = DataBinaryReader.ReadInt32();
 				_U = DataBinaryReader.ReadInt16();
 				_V = DataBinaryReader.ReadInt16();
+			}
+
+			internal PlanePoint(int PointOffset, short U, short V)
+			{
+				_PointOffset = PointOffset;
+				_U = U;
+				_V = V;
 			}
 		}
 	}
@@ -129,6 +160,13 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			_Unknown1 = DataBinaryReader.ReadUInt64();
 			_Unknown2 = DataBinaryReader.ReadUInt64();
 			_Unknown3 = DataBinaryReader.ReadUInt64();
+		}
+
+		internal PlaneData(ulong Unknown1, ulong Unknown2, ulong Unknown3)
+		{
+			_Unknown1 = Unknown1;
+			_Unknown2 = Unknown2;
+			_Unknown3 = Unknown3;
 		}
 	}
 
@@ -163,6 +201,17 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			}
 		}
 
+		internal ObjectData(int Unknown1, int Unknown2, int Unknown3, int Unknown4,
+			short SubrecordCount, ObjectDataValue[] ObjectDataValues)
+		{
+			_Unknown1 = Unknown1;
+			_Unknown2 = Unknown2;
+			_Unknown3 = Unknown3;
+			_Unknown4 = Unknown4;
+			_SubrecordCount = SubrecordCount;
+			_ObjectDataValues = ObjectDataValues;
+		}
+
 		internal readonly struct ObjectDataValue
 		{
 			internal readonly uint _Unknown1;
@@ -172,6 +221,12 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			{
 				_Unknown1 = DataBinaryReader.ReadUInt32();
 				_Unknown2 = DataBinaryReader.ReadUInt16();
+			}
+
+			internal ObjectDataValue(uint Unknown1, ushort Unknown2)
+			{
+				_Unknown1 = Unknown1;
+				_Unknown2 = Unknown2;
 			}
 		}
 	}

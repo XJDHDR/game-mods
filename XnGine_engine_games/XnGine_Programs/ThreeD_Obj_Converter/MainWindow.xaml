@@ -6,7 +6,18 @@
         xmlns:local="clr-namespace:ThreeD_Obj_Converter"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
+    <StackPanel>
+	    <TabControl>
+		    <TabItem Header="Convert 3D to OBJ">
+			    <StackPanel>
 
-    </Grid>
+			    </StackPanel>
+		    </TabItem>
+		    <TabItem Header="Convert OBJ to 3D">
+			    <StackPanel>
+
+			    </StackPanel>
+		    </TabItem>
+	    </TabControl>
+    </StackPanel>
 </Window>

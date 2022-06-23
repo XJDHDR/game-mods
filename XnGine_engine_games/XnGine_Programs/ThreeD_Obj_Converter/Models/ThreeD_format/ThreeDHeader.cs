@@ -85,5 +85,21 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 
 			WasSuccessful = true;
 		}
+
+		internal ThreeDHeader(float Version, int PointCount, int PlaneCount, int OriginToMostDistantPointRadius, int PlaneDataOffset,
+			int ObjectDataOffset, int ObjectDataCount, int PointListOffset, int NormalListOffset, int PlaneListOffset)
+		{
+			_Version = Version;
+			_PointCount = PointCount;
+			_PlaneCount = PlaneCount;
+			_OriginToMostDistantPointRadius = OriginToMostDistantPointRadius;
+			_PlaneDataOffset = PlaneDataOffset;
+			_ObjectDataOffset = ObjectDataOffset;
+			_ObjectDataCount = ObjectDataCount;
+			_PointListOffset = PointListOffset;
+			_NormalListOffset = NormalListOffset;
+			_PlaneListOffset = PlaneListOffset;
+			_StreamHeaderStartPos = 0;
+		}
 	}
 }

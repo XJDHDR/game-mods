@@ -308,6 +308,25 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			}
 		}
 
+		internal ObjFileData(string HeaderComments, string[] InlineCommentStrings, int[] InlineCommentStartIndex,
+			MaterialLibraryDefinition[] MaterialLibraries, Vector4[] AllVertices, Vector3[] AllVertexTextures,
+			Vector3[] AllVertexNormals, FaceDefinition[] AllFaces, ObjectDefinition[] AllObjects,
+			GroupDefinition[] AllGroups, MaterialDefinition[] AllMaterials, SmoothingGroup[] AllSmoothingGroups)
+		{
+			_HeaderComments = HeaderComments;
+			_InlineCommentStrings = InlineCommentStrings;
+			_InlineCommentStartIndex = InlineCommentStartIndex;
+			_MaterialLibraries = MaterialLibraries;
+			_AllVertices = AllVertices;
+			_AllVertexTextures = AllVertexTextures;
+			_AllVertexNormals = AllVertexNormals;
+			_AllFaces = AllFaces;
+			_AllObjects = AllObjects;
+			_AllGroups = AllGroups;
+			_AllMaterials = AllMaterials;
+			_AllSmoothingGroups = AllSmoothingGroups;
+		}
+
 
 		internal void _Write(Stream OutputStream)
 		{
@@ -477,21 +496,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			MessageStringBuilder.AppendLine();
 		}
 
-		/// <summary>
-		///
-		/// </summary>
-		/// <param name="OutputStream"></param>
-		/// <param name="ObjDataLinesWritten"></param>
-		/// <param name="CheckInlineComments"></param>
-		/// <param name="CurrentInlineComment"></param>
-		/// <param name="CheckObjects"></param>
-		/// <param name="CurrentObject"></param>
-		/// <param name="CheckGroups"></param>
-		/// <param name="CurrentGroup"></param>
-		/// <param name="CheckMaterialsRef"></param>
-		/// <param name="CurrentMaterialRef"></param>
-		/// <param name="CheckSmoothing"></param>
-		/// <param name="CurrentSmoothing"></param>
 		private void checkForInterDataItemToBeWritten(Stream OutputStream, ref int ObjDataLinesWritten,
 			ref bool CheckInlineComments, ref int CurrentInlineComment,
 			ref bool CheckObjects, ref int CurrentObject,
@@ -611,6 +615,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				// If it's not a relative path either, the MTL data can't be read.
 				_MtlData = new MtlFileData();
 			}
+
+			internal MaterialLibraryDefinition(string LibName, MtlFileData MtlData)
+			{
+				_LibName = LibName;
+				_MtlData = MtlData;
+			}
 		}
 
 		/// <summary>
@@ -662,6 +672,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 					_Corners[i] = new FaceCornerDefinition(FaceStringParts[currentIndexElement]);
 				}
+			}
+
+			internal FaceDefinition(FaceCornerDefinition[] Corners)
+			{
+				_Corners = Corners;
 			}
 		}
 
@@ -727,6 +742,16 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 						break;
 				}
+			}
+
+			internal FaceCornerDefinition(int VertexIndex, bool IsVertexTextureUsed, int VertexTextureIndex,
+				bool IsVertexNormalUsed, int VertexNormalIndex)
+			{
+				_VertexIndex = VertexIndex;
+				_IsVertexTextureUsed = IsVertexTextureUsed;
+				_VertexTextureIndex = VertexTextureIndex;
+				_IsVertexNormalUsed = IsVertexNormalUsed;
+				_VertexNormalIndex = VertexNormalIndex;
 			}
 		}
 
