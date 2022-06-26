@@ -12,7 +12,7 @@ using System.Windows;
 
 namespace ThreeD_Obj_Converter.Models.ThreeD_format
 {
-	internal readonly struct ThreeDHeader
+	internal readonly ref struct ThreeDHeader
 	{
 		internal readonly float _Version;
 		internal readonly int _PointCount;

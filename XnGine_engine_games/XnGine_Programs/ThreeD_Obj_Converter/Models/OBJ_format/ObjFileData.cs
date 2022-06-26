@@ -15,7 +15,7 @@ using System.Windows;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
-	internal readonly struct ObjFileData
+	internal readonly ref struct ObjFileData
 	{
 		/// <summary> Add your comments here, including newlines and the starting # for each line. </summary>
 		internal readonly string _HeaderComments;
@@ -28,7 +28,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal readonly Vector4[] _AllVertices;
 		internal readonly Vector3[] _AllVertexTextures;
 		internal readonly Vector3[] _AllVertexNormals;
-		internal readonly FaceDefinition[] _AllFaces;
 
 		internal readonly ObjectDefinition[] _AllObjects;
 
@@ -49,7 +48,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			_AllVertices = Array.Empty<Vector4>();
 			_AllVertexTextures = Array.Empty<Vector3>();
 			_AllVertexNormals = Array.Empty<Vector3>();
-			_AllFaces = Array.Empty<FaceDefinition>();
 			_AllGroups = Array.Empty<GroupDefinition>();
 			_AllObjects = Array.Empty<ObjectDefinition>();
 			_AllMaterials = Array.Empty<MaterialDefinition>();
@@ -64,13 +62,14 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				List<Vector4> allVertices = new();
 				List<Vector3> allVertexTextures = new();
 				List<Vector3> allVertexNormals = new();
-				List<FaceDefinition> allFaces = new();
 				List<GroupDefinition> allGroups = new();
 				List<ObjectDefinition> allObjects = new();
-				List<MaterialDefinition> allMaterials = new();
 				List<SmoothingGroup> allSmoothingGroups = new();
 				StringBuilder commonStringsBuilder = new();
 				StringBuilder messagesStringBuilder = new();
+
+				List<string> allMaterialStrings = new();
+				List<List<string>> allFacesAssociatedWithMaterialsList = new();
 
 				// Fields that indicate the reading status for comments
 				bool havePassedHeader = false;
@@ -137,6 +136,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 						continue;
 					}
 
+					int currentMaterial = -1;
 					readSubstrings[0] = readSubstrings[0].ToLower();
 					switch (readSubstrings[0])
 					{
@@ -154,17 +154,22 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a Face
 							if (readSubstrings.Length < 4)
 							{
-								notEnoughPartsError(messagesStringBuilder, in i, "a Face", "3 parts", in readString);
+								notEnoughPartsError(messagesStringBuilder, in i, "a Face", "3 or more parts", in readString);
 								break;
 							}
-							allFaces.Add(new FaceDefinition(readSubstrings));
+							for (int j = 1; j < readSubstrings.Length; ++j)
+							{
+								commonStringsBuilder.Append(readSubstrings[j]);
+							}
+							allFacesAssociatedWithMaterialsList[currentMaterial].Add(commonStringsBuilder.ToString());
+							commonStringsBuilder.Clear();
 							break;
 
 						case "g":
 							// This line defines a point where all the subsequent entries are part of the same group.
 							if (readSubstrings.Length < 2)
 							{
-								notEnoughPartsError(messagesStringBuilder, in i, "a group", "2 parts", in readString);
+								notEnoughPartsError(messagesStringBuilder, in i, "a group", "2 or more parts", in readString);
 								break;
 							}
 							for (int j = 1; j < readSubstrings.Length; ++j)
@@ -179,7 +184,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 							// This line defines a point where all the subsequent entries are part of the same object.
 							if (readSubstrings.Length < 2)
 							{
-								notEnoughPartsError(messagesStringBuilder, in i, "an object", "2 parts", in readString);
+								notEnoughPartsError(messagesStringBuilder, in i, "an object", "2 or more parts", in readString);
 								break;
 							}
 							for (int j = 1; j < readSubstrings.Length; ++j)
@@ -202,12 +207,19 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 						case "usemtl":
 							// This line defines a point where all the subsequent faces must use the specified material reference.
-							if (readSubstrings.Length is not 2)
+							if (readSubstrings.Length < 2)
 							{
-								notEnoughPartsError(messagesStringBuilder, in i, "a material reference", "2 parts", in readString);
+								notEnoughPartsError(messagesStringBuilder, in i, "a material reference", "2 or more parts", in readString);
 								break;
 							}
-							allMaterials.Add(new MaterialDefinition(readSubstrings[1], linesOfObjDataRead));
+							for (int j = 1; j < readSubstrings.Length; ++j)
+							{
+								commonStringsBuilder.Append(readSubstrings[j]);
+							}
+							allMaterialStrings.Add(commonStringsBuilder.ToString());
+							commonStringsBuilder.Clear();
+							allFacesAssociatedWithMaterialsList.Add(new List<string>());
+							++currentMaterial;
 							break;
 
 						case "v":
@@ -268,6 +280,18 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					}
 				}
 
+				// With that done, use the gathered Material References and Faces to properly construct the OBJ data for them.
+				_AllMaterials = new MaterialDefinition[allMaterialStrings.Count];
+				for (int i = 0; i < allMaterialStrings.Count; ++i)
+				{
+					FaceDefinition[] allFacesForCurrentMaterial = new FaceDefinition[allFacesAssociatedWithMaterialsList[i].Count];
+					for (int j = 0; j < allFacesAssociatedWithMaterialsList[i].Count; j++)
+					{
+						allFacesForCurrentMaterial[j] = new(allFacesAssociatedWithMaterialsList[i].ToArray());
+					}
+					_AllMaterials[i] = new(allMaterialStrings[i], allFacesForCurrentMaterial);
+				}
+
 				// Assign all of the lists created above to the array fields, but check if the lists have anything in them
 				// first to prevent excessive heap allocations.
 				if (inlineCommentStrings.Count != 0)
@@ -288,17 +312,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				if (allVertexNormals.Count != 0)
 					_AllVertexNormals = allVertexNormals.ToArray();
 
-				if (allFaces.Count != 0)
-					_AllFaces = allFaces.ToArray();
-
 				if (allGroups.Count != 0)
 					_AllGroups = allGroups.ToArray();
 
 				if (allObjects.Count != 0)
 					_AllObjects = allObjects.ToArray();
-
-				if (allMaterials.Count != 0)
-					_AllMaterials = allMaterials.ToArray();
 
 				if (allSmoothingGroups.Count != 0)
 					_AllSmoothingGroups = allSmoothingGroups.ToArray();
@@ -310,7 +328,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 		internal ObjFileData(string HeaderComments, string[] InlineCommentStrings, int[] InlineCommentStartIndex,
 			MaterialLibraryDefinition[] MaterialLibraries, Vector4[] AllVertices, Vector3[] AllVertexTextures,
-			Vector3[] AllVertexNormals, FaceDefinition[] AllFaces, ObjectDefinition[] AllObjects,
+			Vector3[] AllVertexNormals, ObjectDefinition[] AllObjects,
 			GroupDefinition[] AllGroups, MaterialDefinition[] AllMaterials, SmoothingGroup[] AllSmoothingGroups)
 		{
 			_HeaderComments = HeaderComments;
@@ -320,7 +338,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			_AllVertices = AllVertices;
 			_AllVertexTextures = AllVertexTextures;
 			_AllVertexNormals = AllVertexNormals;
-			_AllFaces = AllFaces;
 			_AllObjects = AllObjects;
 			_AllGroups = AllGroups;
 			_AllMaterials = AllMaterials;
@@ -337,8 +354,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			int currentObject = 0;
 			bool checkGroups = (_AllGroups.Length > 0);
 			int currentGroup = 0;
-			bool checkMaterials = (_AllMaterials.Length > 0);
-			int currentMaterial = 0;
 			bool checkSmoothing = (_AllSmoothingGroups.Length > 0);
 			int currentSmoothing = 0;
 
@@ -360,7 +375,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					ref checkInlineComments, ref currentInlineComment,
 					ref checkObjects, ref currentObject,
 					ref checkGroups, ref currentGroup,
-					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
 				Encoding.UTF8.GetBytes($"mtllib {_MaterialLibraries[i]._LibName}", intermediateByteSpan);
@@ -377,7 +391,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					ref checkInlineComments, ref currentInlineComment,
 					ref checkObjects, ref currentObject,
 					ref checkGroups, ref currentGroup,
-					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
 				// Is the W parameter equal to 1 (default value)? If not, don't include it in the final output stream.
@@ -401,7 +414,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					ref checkInlineComments, ref currentInlineComment,
 					ref checkObjects, ref currentObject,
 					ref checkGroups, ref currentGroup,
-					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
 				// Is the Z parameter equal to 0 (default value)? If not, don't include it in the final output stream.
@@ -432,7 +444,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					ref checkInlineComments, ref currentInlineComment,
 					ref checkObjects, ref currentObject,
 					ref checkGroups, ref currentGroup,
-					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
 				Encoding.UTF8.GetBytes(
@@ -444,45 +455,64 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			}
 			OutputStream.Write(crlf);
 
-			// Write all faces to the output Stream.
-			for (int i = 0; i < _AllFaces.Length; ++i)
+			// Write all faces and their associated Material References to the output Stream.
+			for (int i = 0; i < _AllMaterials.Length; ++i)
 			{
 				checkForInterDataItemToBeWritten(OutputStream, ref objDataLinesWritten,
 					ref checkInlineComments, ref currentInlineComment,
 					ref checkObjects, ref currentObject,
 					ref checkGroups, ref currentGroup,
-					ref checkMaterials, ref currentMaterial,
 					ref checkSmoothing, ref currentSmoothing);
 
-				// Write all of the corners for the current face.
-				for (int j = 0; j < _AllFaces[i]._Corners.Length; ++j)
-				{
-					Encoding.UTF8.GetBytes($"f {_AllFaces[i]._Corners[j]._VertexIndex.ToString(invar)}" , intermediateByteSpan);
-					OutputStream.Write(intermediateByteSpan);
-
-					if (_AllFaces[i]._Corners[j]._IsVertexTextureUsed)
-					{
-						Encoding.UTF8.GetBytes($"/{_AllFaces[i]._Corners[j]._VertexTextureIndex.ToString(invar)}", intermediateByteSpan);
-					}
-					else if (_AllFaces[i]._Corners[j]._IsVertexNormalUsed)
-					{
-						Encoding.UTF8.GetBytes("/", intermediateByteSpan);
-					}
-					OutputStream.Write(intermediateByteSpan);
-
-					if (_AllFaces[i]._Corners[j]._IsVertexNormalUsed)
-					{
-						Encoding.UTF8.GetBytes($"/{_AllFaces[i]._Corners[j]._VertexNormalIndex.ToString(invar)}", intermediateByteSpan);
-						OutputStream.Write(intermediateByteSpan);
-					}
-
-					OutputStream.WriteByte(0x20);	// SPACE char
-				}
-
+				// Write the current Material Reference
+				Encoding.UTF8.GetBytes($"usemtl {_AllMaterials[i]._MaterialName}", intermediateByteSpan);
+				OutputStream.Write(intermediateByteSpan);
 				OutputStream.Write(crlf);
 				++objDataLinesWritten;
+
+				// Write all of the corners for the current face.
+				for (int j = 0; j < _AllMaterials[i]._FacesAssociatedWithMaterial.Length; ++j)
+				{
+					checkForInterDataItemToBeWritten(OutputStream, ref objDataLinesWritten,
+						ref checkInlineComments, ref currentInlineComment,
+						ref checkObjects, ref currentObject,
+						ref checkGroups, ref currentGroup,
+						ref checkSmoothing, ref currentSmoothing);
+
+					for (int k = 0; k < _AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners.Length; ++k)
+					{
+						Encoding.UTF8.GetBytes(
+							$"f {_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._VertexIndex.ToString(invar)}" , intermediateByteSpan
+						);
+						OutputStream.Write(intermediateByteSpan);
+
+						if (_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._IsVertexTextureUsed)
+						{
+							Encoding.UTF8.GetBytes(
+								$"/{_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._VertexTextureIndex.ToString(invar)}", intermediateByteSpan
+								);
+						}
+						else if (_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._IsVertexNormalUsed)
+						{
+							Encoding.UTF8.GetBytes("/", intermediateByteSpan);
+						}
+						OutputStream.Write(intermediateByteSpan);
+
+						if (_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._IsVertexNormalUsed)
+						{
+							Encoding.UTF8.GetBytes(
+								$"/{_AllMaterials[i]._FacesAssociatedWithMaterial[j]._Corners[k]._VertexNormalIndex.ToString(invar)}", intermediateByteSpan
+								);
+							OutputStream.Write(intermediateByteSpan);
+						}
+
+						OutputStream.WriteByte(0x20);	// SPACE char
+					}
+					OutputStream.Write(crlf);
+					++objDataLinesWritten;
+				}
+				OutputStream.Write(crlf);
 			}
-			OutputStream.Write(crlf);
 		}
 
 
@@ -500,7 +530,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			ref bool CheckInlineComments, ref int CurrentInlineComment,
 			ref bool CheckObjects, ref int CurrentObject,
 			ref bool CheckGroups, ref int CurrentGroup,
-			ref bool CheckMaterialsRef, ref int CurrentMaterialRef,
 			ref bool CheckSmoothing, ref int CurrentSmoothing)
 		{
 			Span<byte> intermediateByteSpan = Span<byte>.Empty;
@@ -551,22 +580,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					// If the last Group has just been processed, indicate that this code block should be skipped.
 					if (CurrentGroup >= _AllGroups.Length)
 						CheckGroups = false;
-				}
-			}
-
-			if (CheckMaterialsRef)
-			{
-				if (ObjDataLinesWritten >= _AllMaterials[CurrentMaterialRef]._MaterialStartIndex)
-				{
-					Encoding.UTF8.GetBytes(_AllMaterials[CurrentMaterialRef]._MaterialName, intermediateByteSpan);
-					OutputStream.Write(intermediateByteSpan);
-					OutputStream.Write(crlf);
-					++ObjDataLinesWritten;
-					++CurrentMaterialRef;
-
-					// If the last Material Reference has just been processed, indicate that this code block should be skipped.
-					if (CurrentMaterialRef >= _AllMaterials.Length)
-						CheckMaterialsRef = false;
 				}
 			}
 
@@ -624,6 +637,36 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		}
 
 		/// <summary>
+		/// Struct used to record the name and position of a Group definition.
+		/// </summary>
+		internal readonly struct GroupDefinition
+		{
+			internal readonly string _GroupName;
+			internal readonly int _GroupStartIndex;
+
+			internal GroupDefinition(string Name, int StartIndex)
+			{
+				_GroupName = Name;
+				_GroupStartIndex = StartIndex;
+			}
+		}
+
+		/// <summary>
+		/// Struct used to record the name of a Material Reference, as well as associated faces.
+		/// </summary>
+		internal readonly struct MaterialDefinition
+		{
+			internal readonly string _MaterialName;
+			internal readonly FaceDefinition[] _FacesAssociatedWithMaterial;
+
+			internal MaterialDefinition(string MaterialReference, FaceDefinition[] FacesAssociatedWithMaterial)
+			{
+				_MaterialName = MaterialReference;
+				_FacesAssociatedWithMaterial = FacesAssociatedWithMaterial;
+			}
+		}
+
+		/// <summary>
 		/// Defines all of the corners of a single face.
 		/// </summary>
 		internal readonly struct FaceDefinition
@@ -674,10 +717,8 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				}
 			}
 
-			internal FaceDefinition(FaceCornerDefinition[] Corners)
-			{
+			internal FaceDefinition(FaceCornerDefinition[] Corners) =>
 				_Corners = Corners;
-			}
 		}
 
 		/// <summary>
@@ -752,36 +793,6 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				_VertexTextureIndex = VertexTextureIndex;
 				_IsVertexNormalUsed = IsVertexNormalUsed;
 				_VertexNormalIndex = VertexNormalIndex;
-			}
-		}
-
-		/// <summary>
-		/// Struct used to record the name and position of a Group definition.
-		/// </summary>
-		internal readonly struct GroupDefinition
-		{
-			internal readonly string _GroupName;
-			internal readonly int _GroupStartIndex;
-
-			internal GroupDefinition(string Name, int StartIndex)
-			{
-				_GroupName = Name;
-				_GroupStartIndex = StartIndex;
-			}
-		}
-
-		/// <summary>
-		/// Struct used to record the name and position of a Material Reference.
-		/// </summary>
-		internal readonly struct MaterialDefinition
-		{
-			internal readonly string _MaterialName;
-			internal readonly int _MaterialStartIndex;
-
-			internal MaterialDefinition(string MaterialReference, int StartIndex)
-			{
-				_MaterialName = MaterialReference;
-				_MaterialStartIndex = StartIndex;
 			}
 		}
 

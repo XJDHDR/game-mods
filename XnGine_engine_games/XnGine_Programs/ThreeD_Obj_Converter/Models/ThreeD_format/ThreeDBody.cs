@@ -10,7 +10,7 @@ using System.IO;
 
 namespace ThreeD_Obj_Converter.Models.ThreeD_format
 {
-	internal readonly struct ThreeDBody
+	internal readonly ref struct ThreeDBody
 	{
 		internal readonly Point[] _PointLists;
 		internal readonly Plane[] _PlaneLists;

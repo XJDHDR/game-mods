@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:ThreeD_Obj_Converter"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
     </Application.Resources>
 </Application>
