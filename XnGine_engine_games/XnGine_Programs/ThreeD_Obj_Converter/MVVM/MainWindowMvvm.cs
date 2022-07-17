@@ -7,9 +7,12 @@
 
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Input;
-using Microsoft.Win32;
+using Application = System.Windows.Application;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace ThreeD_Obj_Converter.MVVM
 {
@@ -26,11 +29,19 @@ namespace ThreeD_Obj_Converter.MVVM
 				_ => select3dFileToConvertMethod()
 			);
 
+		public ICommand Select3dFolderToConvert =>
+			// If command hasn't been created yet, create it
+			select3dFolderToConvert ??= new RelayCommand(
+				_ => select3dFolderToConvertMethod()
+			);
+
 
 		// ==== Fields ====
 		public event PropertyChangedEventHandler? PropertyChanged;
 
 		private ICommand? select3dFileToConvert;
+
+		private ICommand? select3dFolderToConvert;
 
 
 		// ==== Public Methods ====
@@ -48,6 +59,20 @@ namespace ThreeD_Obj_Converter.MVVM
 			if (userClickedOk == true)
 			{
 				Input3DModelTextBox = fileSelectorFor3dFile.FileName;
+			}
+		}
+
+		private void select3dFolderToConvertMethod()
+		{
+			FolderBrowserDialog folderSelectorFor3dFiles = new()
+			{
+				InitialDirectory = Directory.GetCurrentDirectory()
+			};
+
+			DialogResult dialogResult = folderSelectorFor3dFiles.ShowDialog();
+			if (dialogResult == DialogResult.OK)
+			{
+				Input3DModelsFolderTextBox = folderSelectorFor3dFiles.SelectedPath;
 			}
 		}
 	}
