@@ -144,11 +144,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		// ==== Internal methods ====
 		internal void _Write(Stream OutputStream)
 		{
-			Span<byte> intermediateByteSpan = Span<byte>.Empty;
 			ReadOnlySpan<byte> crlf = stackalloc byte[] {0x0d, 0x0a};
 			CultureInfo invar = CultureInfo.InvariantCulture;
 			StringBuilder outputStringBuilder = new();
 
+			int bytesRequiredForCharConversion =  Encoding.UTF8.GetByteCount(_HeaderComments);
+			Span<byte> intermediateByteSpan = stackalloc byte[bytesRequiredForCharConversion];
 			Encoding.UTF8.GetBytes(_HeaderComments, intermediateByteSpan);
 			OutputStream.Write(intermediateByteSpan);
 			OutputStream.Write(crlf);

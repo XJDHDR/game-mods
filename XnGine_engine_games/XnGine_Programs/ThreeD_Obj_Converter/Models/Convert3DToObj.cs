@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Windows;
 using ThreeD_Obj_Converter.Models.OBJ_format;
 using ThreeD_Obj_Converter.Models.ThreeD_format;
 
@@ -26,7 +27,7 @@ namespace ThreeD_Obj_Converter.Models
 		{
 			ThreeDHeader threeDHeader;
 			ThreeDBody threeDBody;
-			using (FileStream input3DStream = new($"{InputPath}/{ThreeDFileName}.3D", FileMode.Open))
+			using (FileStream input3DStream = new($"{InputPath}/{ThreeDFileName}", FileMode.Open))
 			{
 				using (BinaryReader input3DBinaryReader = new(input3DStream))
 				{
@@ -151,7 +152,7 @@ namespace ThreeD_Obj_Converter.Models
 			Vector3[] allTextureCoordinates = allTextureCoordinatesList.ToArray();
 
 			// Translate all of the model's NormalLists into OBJ Normal coordinates
-			Vector3[] allVertexNormals = new Vector3[allTextureCoordinates.Length];
+			Vector3[] allVertexNormals = new Vector3[threeDHeader._PlaneCount];
 			for (int i = 0; i < allVertexNormals.Length; ++i)
 			{
 				allVertexNormals[i].X = threeDBody._NormalLists[i]._X / 256f;
@@ -165,9 +166,16 @@ namespace ThreeD_Obj_Converter.Models
 				Array.Empty<ObjFileData.GroupDefinition>(), allMaterials, Array.Empty<ObjFileData.SmoothingGroup>());
 
 			// Write the OBJ data to file
-			using (FileStream outputObjStream = new($"{OutputPath}/{ThreeDFileName}.obj", FileMode.Create))
+			try
 			{
-				objFileData._Write(outputObjStream);
+				using (FileStream outputObjStream = new($"{OutputPath}/{ThreeDFileName}.obj", FileMode.Create))
+				{
+					objFileData._Write(outputObjStream);
+				}
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show($"Exception occurred while writing out file:\n{e}");
 			}
 
 			// Write all of the MTL data to files

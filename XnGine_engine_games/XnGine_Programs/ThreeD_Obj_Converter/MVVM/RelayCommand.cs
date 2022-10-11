@@ -18,47 +18,25 @@ namespace ThreeD_Obj_Converter.MVVM
 	/// </summary>
 	public class RelayCommand : ICommand
 	{
+		private readonly Predicate<object> canExecute;
 		private readonly Action<object> execute;
-		private readonly Predicate<object>? canExecute;
 
-
-		/// <summary>
-		/// Creates a new command that can always execute.
-		/// </summary>
-		/// <param name="Execute">The execution logic.</param>
-		public RelayCommand(Action<object> Execute)
-			: this(Execute, null)
+		public RelayCommand(Predicate<object> CanExecute, Action<object> Execute)
 		{
-		}
-
-		/// <summary>
-		/// Creates a new command.
-		/// </summary>
-		/// <param name="Execute">The execution logic.</param>
-		/// <param name="CanExecute">The execution status logic.</param>
-		public RelayCommand(Action<object> Execute, Predicate<object>? CanExecute)
-		{
-			execute = Execute ?? throw new ArgumentNullException(nameof(Execute));
 			canExecute = CanExecute;
+			execute = Execute;
 		}
 
-
-		[DebuggerStepThrough]
-		public bool CanExecute(object? Parameters)
-		{
-			if (Parameters == null) throw new ArgumentNullException(nameof(Parameters));
-
-			return canExecute?.Invoke(Parameters) ?? true;
-		}
-
-		public event EventHandler? CanExecuteChanged
+		public event EventHandler CanExecuteChanged
 		{
 			add => CommandManager.RequerySuggested += value;
 			remove => CommandManager.RequerySuggested -= value;
 		}
 
-		public void Execute(object? Parameters) =>
-			execute(Parameters ??
-				throw new ArgumentNullException(nameof(Parameters)));
+		public bool CanExecute(object Parameter) =>
+			canExecute(Parameter);
+
+		public void Execute(object Parameter) =>
+			execute(Parameter);
 	}
 }

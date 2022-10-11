@@ -5,33 +5,32 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ThreeD_Obj_Converter"
         xmlns:mvvm="clr-namespace:ThreeD_Obj_Converter.MVVM"
-        DataContext="{StaticResource MainWindowMvvm}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="250" Width="450">
-	<Window.Resources>
-		<mvvm:MainWindowMvvm x:Key="MainWindowMvvm" />
-	</Window.Resources>
+        Title="MainWindow" MinHeight="250" MinWidth="450" SizeToContent="WidthAndHeight">
+	<Window.DataContext>
+		<mvvm:MainWindowMvvm/>
+	</Window.DataContext>
 	<StackPanel>
 	    <TabControl>
 		    <TabItem Header="Convert 3D to OBJ">
 			    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,10,10,0">
 					    <Button Command="{Binding Select3dFileToConvert, BindsDirectlyToSource=true}">Input 3D model</Button>
-					    <TextBox Text="{Binding Input3DModelTextBox}" MinWidth="250"></TextBox>
+					    <TextBox Text="{Binding Input3DModelTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="250"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
 				    <TextBlock VerticalAlignment="Center" TextAlignment="Center">OR</TextBlock>
 
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,0,10,20">
-					    <Button>Input 3D models folder</Button>
-					    <TextBox Text="{Binding Input3DModelsFolderTextBox}" MinWidth="210"></TextBox>
+					    <Button Command="{Binding Select3dFolderToConvert, BindsDirectlyToSource=true}">Input 3D models folder</Button>
+					    <TextBox Text="{Binding Input3DModelsFolderTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="210"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,0,10,30">
 					    <Button>Output folder</Button>
-					    <TextBox Text="{Binding OutputObjModelsFolderTextBox}" MinWidth="260"></TextBox>
+					    <TextBox Text="{Binding OutputObjModelsFolderTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="260"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
@@ -45,7 +44,7 @@
 					    <RadioButton Margin="4,0,4,0">Enforce lengths only</RadioButton>
 				    </StackPanel>
 
-				    <Button Margin="10,0,10,10" Width="100">Convert</Button>
+				    <Button Margin="10,0,10,10" Command="{Binding StartConversion}" Width="100">Convert</Button>
 			    </StackPanel>
 		    </TabItem>
 		    <TabItem Header="Convert OBJ to 3D">

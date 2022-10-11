@@ -5,6 +5,7 @@
 // https://github.com/XJDHDR/game-mods/blob/master/LICENSE.md
 //
 
+using System;
 using System.Windows;
 
 namespace ThreeD_Obj_Converter
