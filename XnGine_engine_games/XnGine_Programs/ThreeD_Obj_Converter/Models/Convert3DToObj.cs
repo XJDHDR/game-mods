@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Windows;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 using ThreeD_Obj_Converter.Models.OBJ_format;
 using ThreeD_Obj_Converter.Models.ThreeD_format;
 
@@ -168,23 +170,21 @@ namespace ThreeD_Obj_Converter.Models
 			// Write the OBJ data to file
 			try
 			{
-				using (FileStream outputObjStream = new($"{OutputPath}/{ThreeDFileName}.obj", FileMode.Create))
-				{
-					objFileData._Write(outputObjStream);
-				}
+				using FileStream outputObjStream = new($"{OutputPath}/{ThreeDFileName}.obj", FileMode.Create);
+				objFileData._Write(outputObjStream);
 			}
 			catch (Exception e)
 			{
-				MessageBox.Show($"Exception occurred while writing out file:\n{e}");
+				IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+					"Exception during File Stream write", $"An Exception occurred while writing out file:\n{e}");
+				messageBox.Show();
 			}
 
 			// Write all of the MTL data to files
 			for (int i = 0; i < objFileData._MaterialLibraries.Length; ++i)
 			{
-				using (FileStream outputMtlStream = new($"{OutputPath}/{objFileData._MaterialLibraries[i]._LibName}.mtl", FileMode.Create))
-				{
-					objFileData._MaterialLibraries[i]._MtlData._Write(outputMtlStream);
-				}
+				using FileStream outputMtlStream = new($"{OutputPath}/{objFileData._MaterialLibraries[i]._LibName}.mtl", FileMode.Create);
+				objFileData._MaterialLibraries[i]._MtlData._Write(outputMtlStream);
 			}
 		}
 	}

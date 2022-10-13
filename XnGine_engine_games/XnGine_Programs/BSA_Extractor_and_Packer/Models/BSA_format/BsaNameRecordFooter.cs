@@ -8,8 +8,8 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Windows;
-using System.Windows.Documents;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 
 namespace BSA_Extractor_and_Packer.Models.BSA_format
 {
@@ -32,9 +32,10 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 
 						if (endOfStreamReached)
 						{
-							MessageBox.Show($"The end of the BSA stream was reached while reading record #{i}, " +
-								"before it could read all of the required data to populate the footer data. " +
-								"This could indicate data corruption.");
+							IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("End of Stream reached",
+								$"The end of the BSA stream was reached while reading record #{i}, before it could read all of " +
+								$"the required data to populate the footer data. This could indicate data corruption.");
+							messageBox.Show();
 							WasSuccessful = false;
 							return;
 						}

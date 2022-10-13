@@ -1,36 +1,38 @@
-﻿<Window x:Class="ThreeD_Obj_Converter.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ThreeD_Obj_Converter.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ThreeD_Obj_Converter"
-        xmlns:mvvm="clr-namespace:ThreeD_Obj_Converter.MVVM"
-        mc:Ignorable="d"
-        Title="MainWindow" MinHeight="250" MinWidth="450" SizeToContent="WidthAndHeight">
-	<Window.DataContext>
-		<mvvm:MainWindowMvvm/>
-	</Window.DataContext>
-	<StackPanel>
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="ThreeD_Obj_Converter.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="ThreeD_Obj_Converter">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <StackPanel>
 	    <TabControl>
 		    <TabItem Header="Convert 3D to OBJ">
 			    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,10,10,0">
-					    <Button Command="{Binding Select3dFileToConvert, BindsDirectlyToSource=true}">Input 3D model</Button>
-					    <TextBox Text="{Binding Input3DModelTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="250"></TextBox>
+					    <Button Command="{Binding Select3dFileToConvert}">Input 3D model</Button>
+					    <TextBox Text="{Binding Input3DModelTextBox, Mode=TwoWay}" MinWidth="250"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
 				    <TextBlock VerticalAlignment="Center" TextAlignment="Center">OR</TextBlock>
 
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,0,10,20">
-					    <Button Command="{Binding Select3dFolderToConvert, BindsDirectlyToSource=true}">Input 3D models folder</Button>
-					    <TextBox Text="{Binding Input3DModelsFolderTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="210"></TextBox>
+					    <Button Command="{Binding Select3dFolderToConvert}">Input 3D models folder</Button>
+					    <TextBox Text="{Binding Input3DModelsFolderTextBox, Mode=TwoWay}" MinWidth="210"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
 				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,0,10,30">
 					    <Button>Output folder</Button>
-					    <TextBox Text="{Binding OutputObjModelsFolderTextBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="260"></TextBox>
+					    <TextBox Text="{Binding OutputObjModelsFolderTextBox, Mode=TwoWay}" MinWidth="260"></TextBox>
 					    <Button>Clear</Button>
 				    </StackPanel>
 
@@ -47,10 +49,13 @@
 				    <Button Margin="10,0,10,10" Command="{Binding StartConversion}" Width="100">Convert</Button>
 			    </StackPanel>
 		    </TabItem>
+
 		    <TabItem Header="Convert OBJ to 3D">
 			    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+
 			    </StackPanel>
 		    </TabItem>
 	    </TabControl>
     </StackPanel>
+
 </Window>

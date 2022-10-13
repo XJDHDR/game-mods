@@ -11,6 +11,8 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Windows;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
@@ -128,7 +130,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				_AllMaterials = allMaterialsList.ToArray();
 
 			if (messageStringBuilder.Length > 0)
-				MessageBox.Show(messageStringBuilder.ToString());
+			{
+				IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error in MTL File Data Constructor",
+					messageStringBuilder.ToString());
+				messageBox.Show();
+			}
 		}
 
 		internal MtlFileData(string HeaderComments, string[] InlineCommentStrings,

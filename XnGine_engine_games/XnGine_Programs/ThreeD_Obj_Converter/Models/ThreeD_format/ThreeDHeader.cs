@@ -9,6 +9,8 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 
 namespace ThreeD_Obj_Converter.Models.ThreeD_format
 {
@@ -39,10 +41,10 @@ namespace ThreeD_Obj_Converter.Models.ThreeD_format
 			byte readByte = HeaderBinaryReader.ReadByte();
 			if (readByte != 0x76)
 			{
-				MessageBox.Show("While reading the 3D file's first byte, a value of 0x76 was expected. " +
-					$"However, 0x{readByte:x} was read instead. This could indicate either data corruption, or the input " +
-					"data is not from a 3D model file.",
-					"Error: Unexpected data read from 3D file");
+				IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error: Unexpected data read from 3D file",
+					$"While reading the 3D file's first byte, a value of 0x76 was expected. However, 0x{readByte:x} was read instead. " +
+					"This could indicate either data corruption, or the input data is not from a 3D model file.");
+				messageBox.Show();
 				WasSuccessful = false;
 				_Version = 0;
 				_PointCount = 0;

@@ -8,7 +8,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Windows.Documents;
 
 namespace BSA_Extractor_and_Packer.Models.BSA_format
 {

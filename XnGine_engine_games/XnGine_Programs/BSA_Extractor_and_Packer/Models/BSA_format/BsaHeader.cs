@@ -6,7 +6,8 @@
 //
 
 using System.IO;
-using System.Windows;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 
 namespace BSA_Extractor_and_Packer.Models.BSA_format
 {
@@ -38,8 +39,10 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 					return;
 
 				default:
-					MessageBox.Show("While reading the file's BSA Type, a value of either 0x0100 or 0x0200 was expected. " +
+					IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Invalid BSA Type",
+						"While reading the file's BSA Type, a value of either 0x0100 or 0x0200 was expected. " +
 						$"{bsaTypeDataRead:x} was read instead. As a result, it's record type can't be determined and reading can't continue.");
+					messageBox.Show();
 					_BsaType = BsaType.Unknown;
 					WasSuccessful = false;
 					return;

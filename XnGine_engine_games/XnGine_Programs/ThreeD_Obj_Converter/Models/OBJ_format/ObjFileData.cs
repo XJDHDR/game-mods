@@ -12,6 +12,8 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Windows;
+using MessageBox.Avalonia.BaseWindows.Base;
+using MessageBox.Avalonia.Enums;
 
 namespace ThreeD_Obj_Converter.Models.OBJ_format
 {
@@ -322,7 +324,11 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					_AllSmoothingGroups = allSmoothingGroups.ToArray();
 
 				if (messagesStringBuilder.Length > 0)
-					MessageBox.Show(messagesStringBuilder.ToString());
+				{
+					IMsBoxWindow<ButtonResult>? messageBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error in OBJ File Data Constructor",
+						messagesStringBuilder.ToString());
+					messageBox.Show();
+				}
 			}
 		}
 
