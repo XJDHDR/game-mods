@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Patcher_Program", "Patcher_Program\Patcher_Program.csproj", "{BC005EAD-F9A9-4156-93F6-AA93B1CF548E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fable_III_BNK_file_format", "Fable_III_BNK_file_format\Fable_III_BNK_file_format.csproj", "{D705B5AE-A3F8-4CB4-A967-1FCC6C3EDE05}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BC005EAD-F9A9-4156-93F6-AA93B1CF548E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC005EAD-F9A9-4156-93F6-AA93B1CF548E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC005EAD-F9A9-4156-93F6-AA93B1CF548E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC005EAD-F9A9-4156-93F6-AA93B1CF548E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D705B5AE-A3F8-4CB4-A967-1FCC6C3EDE05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D705B5AE-A3F8-4CB4-A967-1FCC6C3EDE05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D705B5AE-A3F8-4CB4-A967-1FCC6C3EDE05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D705B5AE-A3F8-4CB4-A967-1FCC6C3EDE05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
