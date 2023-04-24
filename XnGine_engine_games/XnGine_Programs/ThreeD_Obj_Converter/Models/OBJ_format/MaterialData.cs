@@ -18,26 +18,26 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 	{
 		internal readonly struct MaterialData
 		{
-			internal readonly string _Name;
-			internal readonly Vector3 _AmbientColour;
-			internal readonly Vector3 _DiffuseColour;
-			internal readonly Vector3 _SpecularColour;
-			internal readonly float _SpecularExponent;
-			internal readonly float _Opacity;
-			internal readonly TransmissionColourFilter _TransmissionFilterColour;
-			internal readonly float _OpticalDensity;
+			internal readonly string Name;
+			internal readonly Vector3 AmbientColour;
+			internal readonly Vector3 DiffuseColour;
+			internal readonly Vector3 SpecularColour;
+			internal readonly float SpecularExponent;
+			internal readonly float Opacity;
+			internal readonly TransmissionColourFilter TransmissionFilterColour;
+			internal readonly float OpticalDensity;
 
 			/// <summary> Used to define the material's Illumination Model. </summary>
-			internal readonly IlluminationModels _IlluminationModel;
+			internal readonly IlluminationModels IlluminationModel;
 
-			internal readonly string _AmbientTextureMap;
-			internal readonly string _DiffuseTextureMap;
-			internal readonly string _SpecularColourTextureMap;
-			internal readonly string _SpecularHighlightTextureMap;
-			internal readonly string _AlphaTextureMap;
-			internal readonly string _BumpMap;
-			internal readonly string _DisplacementMap;
-			internal readonly string _StencilDecalTexture;
+			internal readonly string AmbientTextureMap;
+			internal readonly string DiffuseTextureMap;
+			internal readonly string SpecularColourTextureMap;
+			internal readonly string SpecularHighlightTextureMap;
+			internal readonly string AlphaTextureMap;
+			internal readonly string BumpMap;
+			internal readonly string DisplacementMap;
+			internal readonly string StencilDecalTexture;
 
 
 			internal MaterialData(StreamReader MtlDataStreamReader, StringBuilder MessageStringBuilder, in string ThisMaterialName,
@@ -45,28 +45,28 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				out string NextMaterialName, out bool EndOfFileReached)
 			{
 				// Fill the Name field with the string passed to the constructor.
-				_Name = ThisMaterialName.StartsWith("newmtl ", StringComparison.OrdinalIgnoreCase) ?
+				Name = ThisMaterialName.StartsWith("newmtl ", StringComparison.OrdinalIgnoreCase) ?
 					ThisMaterialName.Remove(0, 7) :
 					ThisMaterialName;
 
 				// Pre-populate the other fields with empty/invalid data, just in case they don't get filled below.
 				Vector3 invalidVector3 = new Vector3(-1,-1,-1);
-				_AmbientColour = invalidVector3;
-				_DiffuseColour = invalidVector3;
-				_SpecularColour = invalidVector3;
-				_SpecularExponent = -1;
-				_Opacity = -1;
-				_TransmissionFilterColour = new TransmissionColourFilter(invalidVector3, false);
-				_OpticalDensity = -1;
-				_IlluminationModel = IlluminationModels.Undefined;
-				_AmbientTextureMap = string.Empty;
-				_DiffuseTextureMap = string.Empty;
-				_SpecularColourTextureMap = string.Empty;
-				_SpecularHighlightTextureMap = string.Empty;
-				_AlphaTextureMap = string.Empty;
-				_BumpMap = string.Empty;
-				_DisplacementMap = string.Empty;
-				_StencilDecalTexture = string.Empty;
+				AmbientColour = invalidVector3;
+				DiffuseColour = invalidVector3;
+				SpecularColour = invalidVector3;
+				SpecularExponent = -1;
+				Opacity = -1;
+				TransmissionFilterColour = new TransmissionColourFilter(invalidVector3, false);
+				OpticalDensity = -1;
+				IlluminationModel = IlluminationModels.Undefined;
+				AmbientTextureMap = string.Empty;
+				DiffuseTextureMap = string.Empty;
+				SpecularColourTextureMap = string.Empty;
+				SpecularHighlightTextureMap = string.Empty;
+				AlphaTextureMap = string.Empty;
+				BumpMap = string.Empty;
+				DisplacementMap = string.Empty;
+				StencilDecalTexture = string.Empty;
 				NextMaterialName = string.Empty;
 
 				// Read the Stream's data line-by-line until either the end of file or next material declaration is found.
@@ -117,17 +117,17 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 					{
 						case "bump":
 							// This is an alternative Bump Texture Map
-							_BumpMap = readString.Remove(0, 5);
+							BumpMap = readString.Remove(0, 5);
 							break;
 
 						case "decal":
 							// This is a Stencil Decal Texture Map
-							_StencilDecalTexture = readString.Remove(0, 6);
+							StencilDecalTexture = readString.Remove(0, 6);
 							break;
 
 						case "disp":
 							// This is a Displacement Texture Map
-							_DisplacementMap = readString.Remove(0, 5);
+							DisplacementMap = readString.Remove(0, 5);
 							break;
 
 						case "d":
@@ -137,12 +137,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "Opacity", "2 parts", in readString);
 								break;
 							}
-							_Opacity = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							Opacity = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
 							break;
 
 						case "illum":
 							// This is an Illumination Model
-							illumDecoder(MessageStringBuilder, in LineNumber, in readSubstrings, in readString, ref _IlluminationModel);
+							illumDecoder(MessageStringBuilder, in LineNumber, in readSubstrings, in readString, ref IlluminationModel);
 							break;
 
 						case "ka":
@@ -152,7 +152,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "an Ambient Colour", "4 parts", in readString);
 								break;
 							}
-							_AmbientColour = new Vector3(
+							AmbientColour = new Vector3(
 								float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture)
@@ -166,7 +166,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "a Diffuse Colour", "4 parts", in readString);
 								break;
 							}
-							_DiffuseColour = new Vector3(
+							DiffuseColour = new Vector3(
 								float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture)
@@ -180,7 +180,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "a Specular Colour", "4 parts", in readString);
 								break;
 							}
-							_SpecularColour = new Vector3(
+							SpecularColour = new Vector3(
 								float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[2], NumberStyles.Float, CultureInfo.InvariantCulture),
 								float.Parse(readSubstrings[3], NumberStyles.Float, CultureInfo.InvariantCulture)
@@ -189,32 +189,32 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 						case "map_bump":
 							// This is a Bump Texture Map
-							_BumpMap = readString.Remove(0, 9);
+							BumpMap = readString.Remove(0, 9);
 							break;
 
 						case "map_d":
 							// This is an Alpha Texture Map
-							_AlphaTextureMap = readString.Remove(0, 6);
+							AlphaTextureMap = readString.Remove(0, 6);
 							break;
 
 						case "map_ka":
 							// This is an Ambient Texture Map
-							_AmbientTextureMap = readString.Remove(0, 7);
+							AmbientTextureMap = readString.Remove(0, 7);
 							break;
 
 						case "map_kd":
 							// This is a Diffuse Texture Map
-							_DiffuseTextureMap = readString.Remove(0, 7);
+							DiffuseTextureMap = readString.Remove(0, 7);
 							break;
 
 						case "map_ks":
 							// This is a Specular Colour Texture Map
-							_SpecularColourTextureMap = readString.Remove(0, 7);
+							SpecularColourTextureMap = readString.Remove(0, 7);
 							break;
 
 						case "map_ns":
 							// This is a Specular Highlight Texture Map
-							_SpecularHighlightTextureMap = readString.Remove(0, 7);
+							SpecularHighlightTextureMap = readString.Remove(0, 7);
 							break;
 
 						case "newmtl":
@@ -230,7 +230,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "an Optical Density", "2 parts", in readString);
 								break;
 							}
-							_OpticalDensity = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							OpticalDensity = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
 							break;
 
 						case "ns":
@@ -240,12 +240,12 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "a Specular Exponent", "2 parts", in readString);
 								break;
 							}
-							_SpecularExponent = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							SpecularExponent = float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
 							break;
 
 						case "tf":
 							// This is a Transmission Filter Colour.
-							tfDecoder(MessageStringBuilder, LineNumber, in readSubstrings, in readString, ref _TransmissionFilterColour);
+							tfDecoder(MessageStringBuilder, LineNumber, in readSubstrings, in readString, ref TransmissionFilterColour);
 							break;
 
 						case "tr":
@@ -256,7 +256,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 								notEnoughPartsError(MessageStringBuilder, in LineNumber, "Transparency", "2 parts", in readString);
 								break;
 							}
-							_Opacity = 1 - float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+							Opacity = 1 - float.Parse(readSubstrings[1], NumberStyles.Float, CultureInfo.InvariantCulture);
 							break;
 					}
 
@@ -272,23 +272,23 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 				string AmbientTextureMap, string DiffuseTextureMap, string SpecularColourTextureMap, string SpecularHighlightTextureMap,
 				string AlphaTextureMap, string BumpMap, string DisplacementMap, string StencilDecalTexture)
 			{
-				_Name = Name;
-				_AmbientColour = AmbientColour;
-				_DiffuseColour = DiffuseColour;
-				_SpecularColour = SpecularColour;
-				_SpecularExponent = SpecularExponent;
-				_Opacity = Opacity;
-				_TransmissionFilterColour = TransmissionFilterColour;
-				_OpticalDensity = OpticalDensity;
-				_IlluminationModel = IlluminationModel;
-				_AmbientTextureMap = AmbientTextureMap;
-				_DiffuseTextureMap = DiffuseTextureMap;
-				_SpecularColourTextureMap = SpecularColourTextureMap;
-				_SpecularHighlightTextureMap = SpecularHighlightTextureMap;
-				_AlphaTextureMap = AlphaTextureMap;
-				_BumpMap = BumpMap;
-				_DisplacementMap = DisplacementMap;
-				_StencilDecalTexture = StencilDecalTexture;
+				this.Name = Name;
+				this.AmbientColour = AmbientColour;
+				this.DiffuseColour = DiffuseColour;
+				this.SpecularColour = SpecularColour;
+				this.SpecularExponent = SpecularExponent;
+				this.Opacity = Opacity;
+				this.TransmissionFilterColour = TransmissionFilterColour;
+				this.OpticalDensity = OpticalDensity;
+				this.IlluminationModel = IlluminationModel;
+				this.AmbientTextureMap = AmbientTextureMap;
+				this.DiffuseTextureMap = DiffuseTextureMap;
+				this.SpecularColourTextureMap = SpecularColourTextureMap;
+				this.SpecularHighlightTextureMap = SpecularHighlightTextureMap;
+				this.AlphaTextureMap = AlphaTextureMap;
+				this.BumpMap = BumpMap;
+				this.DisplacementMap = DisplacementMap;
+				this.StencilDecalTexture = StencilDecalTexture;
 			}
 
 			internal void _Write(Stream OutputStream)

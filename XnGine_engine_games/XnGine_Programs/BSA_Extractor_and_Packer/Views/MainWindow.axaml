@@ -13,10 +13,22 @@
     </Design.DataContext>
 
     <TabControl>
-	    <TabItem>
-			<TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+	    <TabItem Header="Extraction">
+		    <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
+			    <StackPanel Orientation="Horizontal">
+				    <TextBox Width="325" Text="{Binding ExtractBsaLocation}" />
+				    <Button Content="Select BSA" Command="{Binding SelectLocationOfBsaToExtract}" />
+			    </StackPanel>
+
+			    <StackPanel Orientation="Horizontal">
+				    <TextBox Width="250" Text="{Binding ExtractDataLocation}" />
+				    <Button Content="Select extract location" Command="{Binding SelectLocationToExtractBsaRecordsTo}" />
+			    </StackPanel>
+
+			    <Button Content="Start extraction" Command="{Binding StartExtractionFromReflectionAttachedMethod}" />
+		    </StackPanel>
 	    </TabItem>
-	    <TabItem>
+	    <TabItem Header="Creation">
 
 	    </TabItem>
     </TabControl>

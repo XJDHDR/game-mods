@@ -13,20 +13,20 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 {
 	internal readonly struct BsaRecordData
 	{
-		internal readonly BsaRecord[] _AllBsaRecords;
+		internal readonly BsaRecord[] AllBsaRecords;
 
 		internal BsaRecordData(BinaryReader RecordDataBinaryReader, in BsaHeader Header, in BsaNameRecordFooter Footer)
 		{
-			_AllBsaRecords = new BsaRecord[Header._RecordCount];
+			AllBsaRecords = new BsaRecord[Header.RecordCount];
 
-			for (int i = 0; i < Header._RecordCount; ++i)
-				_AllBsaRecords[i] = new BsaRecord(RecordDataBinaryReader, i, in Header, in Footer);
+			for (int i = 0; i < Header.RecordCount; ++i)
+				AllBsaRecords[i] = new BsaRecord(RecordDataBinaryReader, i, in Header, in Footer);
 		}
 	}
 
 	internal readonly struct BsaRecord
 	{
-		internal readonly byte[] _UncompressedRecordData;
+		internal readonly byte[] UncompressedRecordData;
 
 		internal BsaRecord(BinaryReader RecordDataBinaryReader, int RecordIndex, in BsaHeader Header, in BsaNameRecordFooter Footer)
 		{
@@ -35,24 +35,24 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 			switch (Header._BsaType)
 			{
 				case BsaHeader.BsaType.NameRecord:
-					isRecordDataCompressed = Footer._NameRecords[RecordIndex]._IsCompressed;
-					recordSize = Footer._NameRecords[RecordIndex]._RecordSize;
+					isRecordDataCompressed = Footer.NameRecords[RecordIndex].IsCompressed;
+					recordSize = Footer.NameRecords[RecordIndex].RecordSize;
 					break;
 
 				case BsaHeader.BsaType.NumberRecord:
-					isRecordDataCompressed = Footer._NumberRecords[RecordIndex]._IsCompressed;
-					recordSize = Footer._NumberRecords[RecordIndex]._RecordSize;
+					isRecordDataCompressed = Footer.NumberRecords[RecordIndex].IsCompressed;
+					recordSize = Footer.NumberRecords[RecordIndex].RecordSize;
 					break;
 			}
 
 			switch (isRecordDataCompressed)
 			{
 				case true:
-					_UncompressedRecordData = decompressRecordData(RecordDataBinaryReader, recordSize);
+					UncompressedRecordData = decompressRecordData(RecordDataBinaryReader, recordSize);
 					break;
 
 				case false:
-					_UncompressedRecordData = RecordDataBinaryReader.ReadBytes(recordSize);
+					UncompressedRecordData = RecordDataBinaryReader.ReadBytes(recordSize);
 					break;
 			}
 		}

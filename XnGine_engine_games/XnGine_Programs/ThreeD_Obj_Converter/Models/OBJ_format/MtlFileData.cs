@@ -19,21 +19,21 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 	internal readonly partial struct MtlFileData
 	{
 		/// <summary> The header's comments, including newlines and the starting # for each line. </summary>
-		internal readonly string _HeaderComments;
+		internal readonly string HeaderComments;
 
-		internal readonly string[] _InlineCommentStrings;
-		internal readonly int[] _InlineCommentStartIndex;
+		internal readonly string[] InlineCommentStrings;
+		internal readonly int[] InlineCommentStartIndex;
 
-		internal readonly MaterialData[] _AllMaterials;
+		internal readonly MaterialData[] AllMaterials;
 
 
 		// ==== Constructors ====
 		internal MtlFileData(Stream MtlDataStream)
 		{
-			_HeaderComments = string.Empty;
-			_InlineCommentStrings = Array.Empty<string>();
-			_InlineCommentStartIndex = Array.Empty<int>();
-			_AllMaterials = Array.Empty<MaterialData>();
+			HeaderComments = string.Empty;
+			InlineCommentStrings = Array.Empty<string>();
+			InlineCommentStartIndex = Array.Empty<int>();
+			AllMaterials = Array.Empty<MaterialData>();
 
 			List<string> inlineCommentStrings = new();
 			List<int> inlineCommentStartIndex = new();
@@ -75,7 +75,7 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 
 				if (commonStringsBuilder.Length > 0)
 				{
-					_HeaderComments = commonStringsBuilder.ToString();
+					HeaderComments = commonStringsBuilder.ToString();
 					commonStringsBuilder.Clear();
 				}
 
@@ -121,13 +121,13 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			}
 
 			if (inlineCommentStrings.Count > 0)
-				_InlineCommentStrings = inlineCommentStrings.ToArray();
+				InlineCommentStrings = inlineCommentStrings.ToArray();
 
 			if (inlineCommentStartIndex.Count > 0)
-				_InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
+				InlineCommentStartIndex = inlineCommentStartIndex.ToArray();
 
 			if (allMaterialsList.Count > 0)
-				_AllMaterials = allMaterialsList.ToArray();
+				AllMaterials = allMaterialsList.ToArray();
 
 			if (messageStringBuilder.Length > 0)
 			{
@@ -140,10 +140,10 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 		internal MtlFileData(string HeaderComments, string[] InlineCommentStrings,
 			int[] InlineCommentStartIndex, MaterialData[] AllMaterials)
 		{
-			_HeaderComments = HeaderComments;
-			_InlineCommentStrings = InlineCommentStrings;
-			_InlineCommentStartIndex = InlineCommentStartIndex;
-			_AllMaterials = AllMaterials;
+			this.HeaderComments = HeaderComments;
+			this.InlineCommentStrings = InlineCommentStrings;
+			this.InlineCommentStartIndex = InlineCommentStartIndex;
+			this.AllMaterials = AllMaterials;
 		}
 
 
@@ -154,15 +154,15 @@ namespace ThreeD_Obj_Converter.Models.OBJ_format
 			CultureInfo invar = CultureInfo.InvariantCulture;
 			StringBuilder outputStringBuilder = new();
 
-			int bytesRequiredForCharConversion =  Encoding.UTF8.GetByteCount(_HeaderComments);
+			int bytesRequiredForCharConversion =  Encoding.UTF8.GetByteCount(HeaderComments);
 			Span<byte> intermediateByteSpan = stackalloc byte[bytesRequiredForCharConversion];
-			Encoding.UTF8.GetBytes(_HeaderComments, intermediateByteSpan);
+			Encoding.UTF8.GetBytes(HeaderComments, intermediateByteSpan);
 			OutputStream.Write(intermediateByteSpan);
 			OutputStream.Write(crlf);
 
-			for (int i = 0; i < _AllMaterials.Length; ++i)
+			for (int i = 0; i < AllMaterials.Length; ++i)
 			{
-				_AllMaterials[i]._Write(OutputStream);
+				AllMaterials[i]._Write(OutputStream);
 			}
 		}
 	}

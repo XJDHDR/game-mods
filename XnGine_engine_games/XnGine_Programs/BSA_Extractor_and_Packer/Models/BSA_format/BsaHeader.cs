@@ -13,13 +13,13 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 {
 	internal readonly struct BsaHeader
 	{
-		internal readonly ushort _RecordCount;
+		internal readonly ushort RecordCount;
 		internal readonly BsaType _BsaType;
 
 		internal BsaHeader(BinaryReader BsaStreamBinaryReader, out bool WasSuccessful)
 		{
 			// First two bytes are the number of records stored in the BSA.
-			_RecordCount = BsaStreamBinaryReader.ReadUInt16();
+			RecordCount = BsaStreamBinaryReader.ReadUInt16();
 
 			// Next two bytes define the BSA type. All this really does is determine how many bytes the
 			// record's "name" takes up in the footer.

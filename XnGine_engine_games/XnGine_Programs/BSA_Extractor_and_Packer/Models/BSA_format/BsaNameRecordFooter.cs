@@ -15,20 +15,20 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 {
 	internal readonly struct BsaNameRecordFooter
 	{
-		internal readonly NameRecord[] _NameRecords;
-		internal readonly NumberRecord[] _NumberRecords;
+		internal readonly NameRecord[] NameRecords;
+		internal readonly NumberRecord[] NumberRecords;
 
 		internal BsaNameRecordFooter(BinaryReader FooterDataBinaryReader, in BsaHeader Header, out bool WasSuccessful)
 		{
 			switch (Header._BsaType)
 			{
 				case BsaHeader.BsaType.NameRecord:
-					_NumberRecords = Array.Empty<NumberRecord>();
+					NumberRecords = Array.Empty<NumberRecord>();
 
-					_NameRecords = new NameRecord[Header._RecordCount];
-					for (int i = 0; i < Header._RecordCount; ++i)
+					NameRecords = new NameRecord[Header.RecordCount];
+					for (int i = 0; i < Header.RecordCount; ++i)
 					{
-						_NameRecords[i] = new NameRecord(FooterDataBinaryReader, out bool endOfStreamReached);
+						NameRecords[i] = new NameRecord(FooterDataBinaryReader, out bool endOfStreamReached);
 
 						if (endOfStreamReached)
 						{
@@ -44,18 +44,18 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 					break;
 
 				case BsaHeader.BsaType.NumberRecord:
-					_NameRecords = Array.Empty<NameRecord>();
+					NameRecords = Array.Empty<NameRecord>();
 
-					_NumberRecords = new NumberRecord[Header._RecordCount];
+					NumberRecords = new NumberRecord[Header.RecordCount];
 
-					for (int i = 0; i < Header._RecordCount; ++i)
-						_NumberRecords[i] = new NumberRecord(FooterDataBinaryReader);
+					for (int i = 0; i < Header.RecordCount; ++i)
+						NumberRecords[i] = new NumberRecord(FooterDataBinaryReader);
 
 					break;
 
 				default:
-					_NameRecords = Array.Empty<NameRecord>();
-					_NumberRecords = Array.Empty<NumberRecord>();
+					NameRecords = Array.Empty<NameRecord>();
+					NumberRecords = Array.Empty<NumberRecord>();
 					break;
 			}
 
@@ -65,41 +65,41 @@ namespace BSA_Extractor_and_Packer.Models.BSA_format
 
 	internal readonly struct NameRecord
 	{
-		internal readonly string _RecordName;
-		internal readonly bool _IsCompressed;
-		internal readonly int _RecordSize;
+		internal readonly string RecordName;
+		internal readonly bool IsCompressed;
+		internal readonly int RecordSize;
 
 		internal NameRecord(BinaryReader NameRecordBinaryReader, out bool EndOfStreamReached)
 		{
 			Span<byte> nameBytes = stackalloc byte[12];
 			int numBytesRead = NameRecordBinaryReader.BaseStream.Read(nameBytes);
-			_RecordName = Encoding.ASCII.GetString(nameBytes);
+			RecordName = Encoding.ASCII.GetString(nameBytes);
 
 			if (numBytesRead < 12)
 			{
 				EndOfStreamReached = true;
-				_IsCompressed = false;
-				_RecordSize = 0;
+				IsCompressed = false;
+				RecordSize = 0;
 				return;
 			}
 
-			_IsCompressed = (NameRecordBinaryReader.ReadUInt16() != 0);
-			_RecordSize = NameRecordBinaryReader.ReadInt32();
+			IsCompressed = (NameRecordBinaryReader.ReadUInt16() != 0);
+			RecordSize = NameRecordBinaryReader.ReadInt32();
 			EndOfStreamReached = false;
 		}
 	}
 
 	internal readonly struct NumberRecord
 	{
-		internal readonly ushort _RecordId;
-		internal readonly bool _IsCompressed;
-		internal readonly int _RecordSize;
+		internal readonly ushort RecordId;
+		internal readonly bool IsCompressed;
+		internal readonly int RecordSize;
 
 		internal NumberRecord(BinaryReader NumberRecordBinaryReader)
 		{
-			_RecordId = NumberRecordBinaryReader.ReadUInt16();
-			_IsCompressed = (NumberRecordBinaryReader.ReadUInt16() != 0);
-			_RecordSize = NumberRecordBinaryReader.ReadInt32();
+			RecordId = NumberRecordBinaryReader.ReadUInt16();
+			IsCompressed = (NumberRecordBinaryReader.ReadUInt16() != 0);
+			RecordSize = NumberRecordBinaryReader.ReadInt32();
 		}
 	}
 }
