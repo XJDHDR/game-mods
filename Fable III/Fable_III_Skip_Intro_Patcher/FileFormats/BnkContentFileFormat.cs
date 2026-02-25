@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Text;
+using ICSharpCode.SharpZipLib.Zip.Compression;
 
 namespace Fable3SkipIntroPatcher.FileFormats;
 
@@ -17,7 +18,7 @@ public class BnkContentFileFormat
         {
             Console.WriteLine($"Warning: BnkContentFileFormat: Bytes 0-3 are not the expected value: 0 expected, got {unknown_AlwaysEqualToZero} instead.");
         }
-        
+
         contentFileFormat.NumberOfFiles = DecompressedData.ReadBigEndianInt32();
 
         contentFileFormat.AllFileEntries = new BnkContentFileEntry[contentFileFormat.NumberOfFiles];
@@ -25,7 +26,7 @@ public class BnkContentFileFormat
         {
             contentFileFormat.AllFileEntries[i] = BnkContentFileEntry.CreateFromStream(DecompressedData, IsContentCompressed);
         }
-        
+
         for (int i = 0; i < contentFileFormat.NumberOfFiles; i++)
         {
             int filePathStringLength = DecompressedData.ReadBigEndianInt32() - 1;   // String is null terminated so we don't need to read the last byte.
@@ -40,10 +41,10 @@ public class BnkContentFileFormat
                     $"Tried to read {filePathStringLength} bytes, got {bytesRead} instead."
                 );
             }
-            
+
             contentFileFormat.AllFileEntries[i].FilePath = Encoding.ASCII.GetString(filePathStringBytes);
             ArrayPool<byte>.Shared.Return(filePathStringBytesArray);
-            
+
             DecompressedData.Position += 28;     // Skip over 27 NUL bytes
             int endOfFileEntry = DecompressedData.ReadByte();
             if (endOfFileEntry != 0x10)
@@ -52,20 +53,35 @@ public class BnkContentFileFormat
                     $"Error: BnkContentFileFormat: Byte at {DecompressedData.Position} was supposed to indicate the end of a file path string with 0x10. {endOfFileEntry:x} was read instead."
                 );
             }
+
+            uint calculatedFilePathHash = 0x811c9dc5;
+            for (int j = 0; j < contentFileFormat.AllFileEntries[i].FilePath.Length; ++j)
+            {
+	            calculatedFilePathHash = (calculatedFilePathHash * 0x1000193) ^ (byte)contentFileFormat.AllFileEntries[i].FilePath[j];
+            }
+
+            if (calculatedFilePathHash != contentFileFormat.AllFileEntries[i].FileNameHash)
+            {
+	            throw new InvalidDataException(
+		            $"Error: BnkContentFileFormat: Calculated filename hash for file {i} at {DecompressedData.Position} did not match stored value. " +
+		            $"Expected 0x{contentFileFormat.AllFileEntries[i].FileNameHash:x}, got 0x{calculatedFilePathHash:x} instead. This could indicate data corruption"
+	            );
+            }
         }
-        
+
         return contentFileFormat;
     }
 }
 
 public class BnkContentFileEntry
 {
-    public uint Hash;
+    public uint FileNameHash;
     public uint FileOffset;
-    public int DataSize;
-    
+    public int ContentFileDataSize;
+
     public int DecompressedDataSize;
     public int NumChunks;
+    public int[] ChunkSizes;
 
     public string FilePath;
 
@@ -73,19 +89,23 @@ public class BnkContentFileEntry
     {
         BnkContentFileEntry fileEntry = new();
 
-        fileEntry.Hash = DecompressedData.ReadBigEndianUInt32();
+        fileEntry.FileNameHash = DecompressedData.ReadBigEndianUInt32();
         fileEntry.FileOffset = DecompressedData.ReadBigEndianUInt32();
 
         fileEntry.DecompressedDataSize = (IsContentCompressed) ?
             DecompressedData.ReadBigEndianInt32() :
             -1;
-        
-        fileEntry.DataSize = DecompressedData.ReadBigEndianInt32();
+
+        fileEntry.ContentFileDataSize = DecompressedData.ReadBigEndianInt32();
 
         if (IsContentCompressed)
         {
             fileEntry.NumChunks = DecompressedData.ReadBigEndianInt32();
-            DecompressedData.Position += fileEntry.NumChunks * 4;   // Skip over unknown data
+            fileEntry.ChunkSizes = new int[fileEntry.NumChunks];
+            for (int i = 0; i < fileEntry.NumChunks; i++)
+            {
+	            fileEntry.ChunkSizes[i] = DecompressedData.ReadBigEndianInt32();
+            }
         }
 
         return fileEntry;

@@ -7,33 +7,33 @@ class Program
 {
 	static void Main(string[] args)
 	{
-		FileStream fileStream = File.OpenRead("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk");
-		BnkIndexFileFormat bnkIndexFile = BnkIndexFileFormat.CreateFromFileStream(fileStream);
+		FileStream bnkIndexFileStream = File.OpenRead("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk");
+		BnkIndexFileFormat bnkIndexFile = BnkIndexFileFormat.CreateFromFileStream(bnkIndexFileStream);
+		bnkIndexFileStream.Close();
 
-		Inflater inflator = new Inflater();
+		Inflater inflator = new();
 		inflator.SetInput(bnkIndexFile.CompressedIndexDataCollated);
 		byte[] decompressedData = new byte[bnkIndexFile.TotalSizeOfDecompressedData];
 		inflator.Inflate(decompressedData);
 		inflator.Reset();
-		
-		File.AppendAllBytes("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.decompressed", decompressedData);
-		
+
 		MemoryStream decompressedIndexDataStream = new(decompressedData);
 		BnkContentFileFormat contentFileFormat = BnkContentFileFormat.CreateFromStream(decompressedIndexDataStream, bnkIndexFile.IsBnkContentDataCompressed);
+		decompressedIndexDataStream.Close();
+
+		FileStream bnkContentFileStream = File.OpenRead("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat");
+		BnkContentFileContents bnkContentFile = BnkContentFileContents.CreateFromStream(bnkContentFileStream, ref contentFileFormat, bnkIndexFile.IsBnkContentDataCompressed);
+		bnkContentFileStream.Close();
 
 		for (int i = 0; i < contentFileFormat.NumberOfFiles; i++)
 		{
-			if (contentFileFormat.AllFileEntries[i].FilePath.Equals("art\\videos\\lionhead_logo.bik"))
+			if (contentFileFormat.AllFileEntries[i].FilePath.Equals("art\\videos\\lionhead_logo.bik") || contentFileFormat.AllFileEntries[i].FilePath.Equals("art\\videos\\microsoft_logo.bik"))
 			{
-				Console.WriteLine($"Found Lionhead Logo at file index {i}");
-			}
-			
-			if (contentFileFormat.AllFileEntries[i].FilePath.Equals("art\\videos\\microsoft_logo.bik"))
-			{
-				Console.WriteLine($"Found Microsoft Logo at file index {i}");
+				// i should be 35 for Microsoft video and 38 for Lionhead
+				BlankBinkVideo.ReplaceBnkContentFileEntry(i, ref bnkContentFile, ref contentFileFormat, bnkIndexFile.IsBnkContentDataCompressed);
 			}
 		}
-		
+
 		Console.WriteLine("Finished reading BNK Index file");
 	}
 }
