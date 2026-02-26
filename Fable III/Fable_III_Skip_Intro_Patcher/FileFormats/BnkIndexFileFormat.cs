@@ -7,68 +7,62 @@ public struct BnkIndexFileFormat
 	public bool IsBnkContentDataCompressed;
 	public BnkIndexCompressedDataChunk[] CompressedIndexDataChunks;
 
-	public int TotalSizeOfDecompressedData;
-	public byte[] CompressedIndexDataCollated;
-
-	public static BnkIndexFileFormat CreateFromFileStream(FileStream FileStream)
+	public BnkIndexFileFormat(Stream BnkIndexData)
 	{
-		BnkIndexFileFormat indexFile = new()
+		if (!BnkIndexData.CanSeek)
 		{
-			TotalDataSize = FileStream.ReadBigEndianUInt32()
-		};
-		if (indexFile.TotalDataSize != FileStream.Length)
+			throw new ArgumentException("The Stream holding the BnkIndex must be seekable.", nameof(BnkIndexData));
+		}
+
+		TotalDataSize = BnkIndexData.ReadBigEndianUInt32();
+		if (TotalDataSize != BnkIndexData.Length)
 		{
 			throw new InvalidDataException(
-				$"Error: BnkIndexFileFormat: Bytes 0-3 indicate an incorrect file size. {FileStream.Length} was expected, got {indexFile.TotalDataSize} instead. " +
+				$"Error: BnkIndexFileFormat: Bytes 0-3 indicate an incorrect file size. {BnkIndexData.Length} was expected, got {TotalDataSize} instead. " +
 				$"This could indicate data corruption or a file that is not a Fable 3 BNK Index file."
 			);
 		}
 
-		indexFile.Unknown_AlwaysEqualToFour = FileStream.ReadBigEndianUInt32();
-		if (indexFile.Unknown_AlwaysEqualToFour != 4)
+		Unknown_AlwaysEqualToFour = BnkIndexData.ReadBigEndianUInt32();
+		if (Unknown_AlwaysEqualToFour != 4)
 		{
-			Console.WriteLine($"Warning: BnkIndexFileFormat: Bytes 4-7 are not the expected value: 4 expected, got {indexFile.Unknown_AlwaysEqualToFour} instead.");
+			Console.WriteLine($"Warning: BnkIndexFileFormat: Bytes 4-7 are not the expected value: 4 expected, got {Unknown_AlwaysEqualToFour} instead.");
 		}
 
-		indexFile.IsBnkContentDataCompressed = (FileStream.ReadByte() != 0);
+		IsBnkContentDataCompressed = (BnkIndexData.ReadByte() != 0);
 
-		indexFile.TotalSizeOfDecompressedData = 0;
 		List<BnkIndexCompressedDataChunk> compressedDataChunks = new();
 		List<byte> compressedData = new();
 		int i = 0;
-		while (FileStream.Position < FileStream.Length)
+		while (BnkIndexData.Position < BnkIndexData.Length)
 		{
-			compressedDataChunks.Add(BnkIndexCompressedDataChunk.CreateFromFileStream(FileStream));
+			compressedDataChunks.Add(BnkIndexCompressedDataChunk.CreateFromFileStream(BnkIndexData));
 			compressedData.AddRange(compressedDataChunks[i].CompressedData);
-			indexFile.TotalSizeOfDecompressedData += compressedDataChunks[i].DecompressedDataSize;
 			i++;
 		}
-		indexFile.CompressedIndexDataChunks = compressedDataChunks.ToArray();
-		indexFile.CompressedIndexDataCollated = compressedData.ToArray();
-
-		return indexFile;
+		CompressedIndexDataChunks = compressedDataChunks.ToArray();
 	}
 }
 
 public struct BnkIndexCompressedDataChunk
 {
 	public int CompressedDataSize;
-	public int DecompressedDataSize;
+	public int DecompressedDataSize;	// Seems to always be 65536 bytes (except for last chunk).
 	public byte[] CompressedData;
 
-	public static BnkIndexCompressedDataChunk CreateFromFileStream(FileStream FileStream)
+	public static BnkIndexCompressedDataChunk CreateFromFileStream(Stream BnkIndexData)
 	{
 		BnkIndexCompressedDataChunk compressedDataChunk = new();
 
-		compressedDataChunk.CompressedDataSize = FileStream.ReadBigEndianInt32();
-		compressedDataChunk.DecompressedDataSize = FileStream.ReadBigEndianInt32();
+		compressedDataChunk.CompressedDataSize = BnkIndexData.ReadBigEndianInt32();
+		compressedDataChunk.DecompressedDataSize = BnkIndexData.ReadBigEndianInt32();
 		compressedDataChunk.CompressedData =  new byte[compressedDataChunk.CompressedDataSize];
 
-		int bytesReadFromFile = FileStream.Read(compressedDataChunk.CompressedData, 0, compressedDataChunk.CompressedDataSize);
+		int bytesReadFromFile = BnkIndexData.Read(compressedDataChunk.CompressedData, 0, compressedDataChunk.CompressedDataSize);
 		if (bytesReadFromFile != compressedDataChunk.CompressedDataSize)
 		{
 			throw new InvalidDataException(
-				$"Error: BnkIndexCompressedDataChunk: Read error for compressed data ending at 0x{FileStream.Position:x}. Tried to read {compressedDataChunk.CompressedDataSize} bytes, got {bytesReadFromFile} instead."
+				$"Error: BnkIndexCompressedDataChunk: Read error for compressed data ending at 0x{BnkIndexData.Position:x}. Tried to read {compressedDataChunk.CompressedDataSize} bytes, got {bytesReadFromFile} instead."
 			);
 		}
 

@@ -15,14 +15,14 @@ public struct BnkContentFileContents
 {
 	public BnkContentFileData[] FileData;
 
-	public static BnkContentFileContents CreateFromStream(Stream ContentFile, ref BnkContentFileFormat FileEntries, bool IsContentDataCompressed)
+	public static BnkContentFileContents CreateFromStream(Stream ContentFile, ref BnkDecompressedIndexData FileEntries, bool IsContentDataCompressed)
 	{
 		BnkContentFileContents fileContents = new();
 
 		fileContents.FileData = new BnkContentFileData[FileEntries.NumberOfFiles];
 		for (int i = 0; i < FileEntries.NumberOfFiles; i++)
 		{
-			fileContents.FileData[i] = BnkContentFileData.CreateFromStream(ContentFile, ref FileEntries.AllFileEntries[i], IsContentDataCompressed);
+			fileContents.FileData[i] = new(ContentFile, ref FileEntries.AllFileEntries[i], IsContentDataCompressed);
 		}
 
 		return fileContents;
@@ -32,52 +32,60 @@ public struct BnkContentFileContents
 public struct BnkContentFileData
 {
 	public byte[] ContentFileData;
-	public byte[] DecompressedData;
 
-	public static BnkContentFileData CreateFromStream(Stream ContentFile, ref BnkContentFileEntry FileEntry, bool IsContentDataCompressed)
+	private bool isContentDataCompressed;
+
+	private const int COMPRESSED_CHUNK_SIZE = 32768;	// Compressed data is stored in chunks of 32KB.
+
+	public BnkContentFileData(Stream ContentFile, ref BnkContentFileEntry FileEntry, bool IsContentDataCompressed)
 	{
-		BnkContentFileData fileData = new();
-
-		fileData.ContentFileData = new byte[FileEntry.ContentFileDataSize];
+		isContentDataCompressed = IsContentDataCompressed;
+		ContentFileData = new byte[FileEntry.ContentFileDataSize];
 		ContentFile.Position = FileEntry.FileOffset;
-		int bytesRead = ContentFile.Read(fileData.ContentFileData,  0, FileEntry.ContentFileDataSize);
+		int bytesRead = ContentFile.Read(ContentFileData,  0, FileEntry.ContentFileDataSize);
 
 		if (bytesRead != FileEntry.ContentFileDataSize)
 		{
-			throw new EndOfStreamException(
-				$"Error: BnkContentFileData: Read error for data ending at {ContentFile.Position}. " +
+			throw new InvalidDataException(
+				$"Error: {nameof(BnkContentFileData)}: Read error for data ending at {ContentFile.Position}. " +
 				$"Tried to read {FileEntry.ContentFileDataSize} bytes, got {bytesRead} instead."
 			);
 		}
+	}
 
-		if (!IsContentDataCompressed)
+	public byte[] DecompressData(ref BnkContentFileEntry FileEntry)
+	{
+		if (!isContentDataCompressed)
 		{
-			return fileData;
+			Console.WriteLine($"Warning: {nameof(BnkContentFileData)}: Was asked to decompress data that is not compressed.");
+			return ContentFileData;
 		}
 
-		int chunkSize = 32768;
+		byte[] decompressedData =  new byte[FileEntry.TotalDecompressedDataSize];
 		int sizeOfRemainingData = FileEntry.ContentFileDataSize;
-		fileData.DecompressedData =  new byte[FileEntry.DecompressedDataSize];
-		MemoryStream decompressedDataStream = new(fileData.DecompressedData);
-		byte[] decompressedDataChunk = ArrayPool<byte>.Shared.Rent(FileEntry.DecompressedDataSize);
 		Inflater inflator = new();
+
+		int decompressedBytesWritten = 0;
 		for (int i = 0; i < FileEntry.NumChunks; i++)
 		{
-			int thisChunkOffset = i * chunkSize;
-			int thisChunkSize = (sizeOfRemainingData < chunkSize) ?
-				sizeOfRemainingData :
-				chunkSize;
+			int thisChunkOffset = i * COMPRESSED_CHUNK_SIZE;
+			int thisChunkSize = (sizeOfRemainingData < COMPRESSED_CHUNK_SIZE) ? sizeOfRemainingData : COMPRESSED_CHUNK_SIZE;
 
-			inflator.SetInput(fileData.ContentFileData, thisChunkOffset, thisChunkSize);
-			int deflatedChunkSize = inflator.Inflate(decompressedDataChunk, 0, FileEntry.DecompressedDataSize);
-			decompressedDataStream.Write(decompressedDataChunk, 0, deflatedChunkSize);
+			inflator.SetInput(ContentFileData, thisChunkOffset, thisChunkSize);
+			int deflatedChunkSize = inflator.Inflate(decompressedData, decompressedBytesWritten, FileEntry.ChunkDecompressedSizes[i]);
+			if (deflatedChunkSize != FileEntry.ChunkDecompressedSizes[i])
+			{
+				throw new InvalidDataException(
+					$"Error: {nameof(BnkContentFileData)}: Inflate error for file: {FileEntry.FilePath}. " +
+					$"Decompressed data was supposed to be {FileEntry.ChunkDecompressedSizes[i]} bytes, got {deflatedChunkSize} instead."
+				);
+			}
+
 			inflator.Reset();
-			sizeOfRemainingData -= chunkSize;
+			sizeOfRemainingData -= COMPRESSED_CHUNK_SIZE;
+			decompressedBytesWritten += FileEntry.ChunkDecompressedSizes[i];
 		}
 
-		decompressedDataStream.Close();
-		ArrayPool<byte>.Shared.Return(decompressedDataChunk);
-
-		return fileData;
+		return decompressedData;
 	}
 }

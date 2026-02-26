@@ -7,8 +7,6 @@
 //  - Xavier "XJDHDR" du Hecquet de Rauville
 
 using Fable3SkipIntroPatcher.FileFormats;
-using ICSharpCode.SharpZipLib.Zip.Compression;
-using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 
 namespace Fable3SkipIntroPatcher;
 
@@ -60,7 +58,7 @@ public static class BlankBinkVideo
 	];
 
 
-	public static void ReplaceBnkContentFileEntry(int I, ref BnkContentFileContents ContentFileContents, ref BnkContentFileFormat ContentFileFormat, bool IsContentDataCompressed)
+	public static void ReplaceBnkContentFileEntry(int I, ref BnkContentFileContents ContentFileContents, ref BnkDecompressedIndexData DecompressedIndexData, bool IsContentDataCompressed)
 	{
 		int oldFileSize = ContentFileContents.FileData[I].ContentFileData.Length;
 		ContentFileContents.FileData[I].ContentFileData = emptyBinkVideo;
@@ -68,15 +66,15 @@ public static class BlankBinkVideo
 
 		if (!IsContentDataCompressed)
 		{
-			ContentFileFormat.AllFileEntries[I].ContentFileDataSize = emptyBinkVideo.Length;
-			for (int j = I + 1; j < ContentFileFormat.NumberOfFiles; j++)
+			DecompressedIndexData.AllFileEntries[I].ContentFileDataSize = emptyBinkVideo.Length;
+			for (int j = I + 1; j < DecompressedIndexData.NumberOfFiles; j++)
 			{
-				ContentFileFormat.AllFileEntries[j].FileOffset = (uint)(ContentFileFormat.AllFileEntries[j].FileOffset + sizeChange);
+				DecompressedIndexData.AllFileEntries[j].FileOffset = (uint)(DecompressedIndexData.AllFileEntries[j].FileOffset + sizeChange);
 			}
 
 			return;
 		}
 
-		throw new NotImplementedException("BlankBinkVideo: Video replacement in compressed BNK files has not been implemented.");
+		throw new NotImplementedException($"{nameof(BlankBinkVideo)}: Video replacement in compressed BNK files has not been implemented.");
 	}
 }
