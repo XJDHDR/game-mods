@@ -10,14 +10,40 @@ public class BnkDecompressedIndexData
 	public int NumberOfFiles;
 	public BnkContentFileEntry[] AllFileEntries;
 
-	public static BnkDecompressedIndexData CreateFromIndexFileData(ref BnkIndexFileFormat IndexFile)
+	public BnkDecompressedIndexData(ref BnkIndexFileFormat IndexFile)
+	{
+		DecompressedData = decompressIndexFileData(ref IndexFile, out int totalDecompressedDataSize);
+
+		using (MemoryStream decompressedDataStream = new(DecompressedData, 0, totalDecompressedDataSize))
+		{
+			int unknown_AlwaysEqualToZero = decompressedDataStream.ReadBigEndianInt32();
+			if (unknown_AlwaysEqualToZero != 0)
+			{
+				Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {unknown_AlwaysEqualToZero} instead.");
+			}
+
+			NumberOfFiles = decompressedDataStream.ReadBigEndianInt32();
+			AllFileEntries = new BnkContentFileEntry[NumberOfFiles];
+			for (int i = 0; i < NumberOfFiles; i++)
+			{
+				AllFileEntries[i] = new(decompressedDataStream, IndexFile.IsBnkContentDataCompressed);
+			}
+
+			for (int i = 0; i < NumberOfFiles; i++)
+			{
+				AllFileEntries[i].ReadFilePathStringsFromStream(decompressedDataStream);
+			}
+		}
+	}
+
+	private byte[] decompressIndexFileData(ref BnkIndexFileFormat IndexFile, out int TotalDecompressedDataSize)
 	{
 		int totalCompressedDataSize = 0;
-		int totalDecompressedDataSize = 0;
+		TotalDecompressedDataSize = 0;
 		for (int i = 0; i < IndexFile.CompressedIndexDataChunks.Length; i++)
 		{
 			totalCompressedDataSize += IndexFile.CompressedIndexDataChunks[i].CompressedDataSize;
-			totalDecompressedDataSize += IndexFile.CompressedIndexDataChunks[i].DecompressedDataSize;
+			TotalDecompressedDataSize += IndexFile.CompressedIndexDataChunks[i].DecompressedDataSize;
 		}
 
 		byte[] collatedCompressedDataBorrowedArray = ArrayPool<byte>.Shared.Rent(totalCompressedDataSize);
@@ -31,48 +57,18 @@ public class BnkDecompressedIndexData
 			destIndexPosition += compressedDataChunk.Length;
 		}
 
-		byte[] decompressedDataBorrowedArray = ArrayPool<byte>.Shared.Rent(totalDecompressedDataSize);
+		byte[] decompressedData = new byte[TotalDecompressedDataSize];
 		Inflater inflater = new();
 		inflater.SetInput(collatedCompressedDataBorrowedArray, 0, totalCompressedDataSize);
-		int decompressedSize = inflater.Inflate(decompressedDataBorrowedArray, 0, totalDecompressedDataSize);
-		if (decompressedSize != totalDecompressedDataSize)
+		int decompressedSize = inflater.Inflate(DecompressedData, 0, TotalDecompressedDataSize);
+		if (decompressedSize != TotalDecompressedDataSize)
 		{
 			throw new InvalidDataException(
-				$"Error: {nameof(BnkDecompressedIndexData)}: Deflated data was not the correct size. Expected {totalDecompressedDataSize} bytes, got {decompressedSize} instead."
+				$"Error: {nameof(BnkDecompressedIndexData)}: Deflated data was not the correct size. Expected {TotalDecompressedDataSize} bytes, got {decompressedSize} instead."
 			);
 		}
 		ArrayPool<byte>.Shared.Return(collatedCompressedDataBorrowedArray);
-
-		BnkDecompressedIndexData decompressedIndexData = new();
-		using (MemoryStream decompressedDataStream = new(decompressedDataBorrowedArray, 0, totalDecompressedDataSize))
-		{
-			createFromDecompressedDataStream(decompressedDataStream, ref decompressedIndexData, ref IndexFile);
-		}
-		ArrayPool<byte>.Shared.Return(decompressedDataBorrowedArray);
-
-		return decompressedIndexData;
-	}
-
-	private static void createFromDecompressedDataStream(Stream DecompressedDataStream, ref BnkDecompressedIndexData DecompressedIndexData, ref BnkIndexFileFormat IndexFile)
-	{
-		int unknown_AlwaysEqualToZero = DecompressedDataStream.ReadBigEndianInt32();
-		if (unknown_AlwaysEqualToZero != 0)
-		{
-			Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {unknown_AlwaysEqualToZero} instead.");
-		}
-
-		DecompressedIndexData.NumberOfFiles = DecompressedDataStream.ReadBigEndianInt32();
-
-		DecompressedIndexData.AllFileEntries = new BnkContentFileEntry[DecompressedIndexData.NumberOfFiles];
-		for (int i = 0; i < DecompressedIndexData.NumberOfFiles; i++)
-		{
-			DecompressedIndexData.AllFileEntries[i] = BnkContentFileEntry.ReadIntsFromStream(DecompressedDataStream, IndexFile.IsBnkContentDataCompressed);
-		}
-
-		for (int i = 0; i < DecompressedIndexData.NumberOfFiles; i++)
-		{
-			DecompressedIndexData.AllFileEntries[i].ReadFilePathStringsFromStream(DecompressedDataStream);
-		}
+		return decompressedData;
 	}
 }
 
@@ -89,30 +85,26 @@ public class BnkContentFileEntry
 
 	public string FilePath = string.Empty;
 
-	public static BnkContentFileEntry ReadIntsFromStream(Stream DecompressedData, bool IsContentCompressed)
+	public BnkContentFileEntry(Stream DecompressedData, bool IsContentCompressed)
 	{
-		BnkContentFileEntry fileEntry = new();
+		FileNameHash = DecompressedData.ReadBigEndianUInt32();
+		FileOffset = DecompressedData.ReadBigEndianUInt32();
 
-		fileEntry.FileNameHash = DecompressedData.ReadBigEndianUInt32();
-		fileEntry.FileOffset = DecompressedData.ReadBigEndianUInt32();
-
-		fileEntry.TotalDecompressedDataSize = (IsContentCompressed) ?
+		TotalDecompressedDataSize = (IsContentCompressed) ?
 			DecompressedData.ReadBigEndianInt32() :
 			-1;
 
-		fileEntry.ContentFileDataSize = DecompressedData.ReadBigEndianInt32();
+		ContentFileDataSize = DecompressedData.ReadBigEndianInt32();
 
 		if (IsContentCompressed)
 		{
-			fileEntry.NumChunks = DecompressedData.ReadBigEndianInt32();
-			fileEntry.ChunkDecompressedSizes = new int[fileEntry.NumChunks];
-			for (int i = 0; i < fileEntry.NumChunks; i++)
+			NumChunks = DecompressedData.ReadBigEndianInt32();
+			ChunkDecompressedSizes = new int[NumChunks];
+			for (int i = 0; i < NumChunks; i++)
 			{
-				fileEntry.ChunkDecompressedSizes[i] = DecompressedData.ReadBigEndianInt32();
+				ChunkDecompressedSizes[i] = DecompressedData.ReadBigEndianInt32();
 			}
 		}
-
-		return fileEntry;
 	}
 
 	public void ReadFilePathStringsFromStream(Stream DecompressedDataStream)

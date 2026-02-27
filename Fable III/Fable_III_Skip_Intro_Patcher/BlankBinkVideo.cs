@@ -60,12 +60,12 @@ public static class BlankBinkVideo
 
 	public static void ReplaceBnkContentFileEntry(int I, ref BnkContentFileContents ContentFileContents, ref BnkDecompressedIndexData DecompressedIndexData, bool IsContentDataCompressed)
 	{
-		int oldFileSize = ContentFileContents.FileData[I].ContentFileData.Length;
-		ContentFileContents.FileData[I].ContentFileData = emptyBinkVideo;
-		int sizeChange = emptyBinkVideo.Length - oldFileSize;
-
 		if (!IsContentDataCompressed)
 		{
+			int oldFileSize = ContentFileContents.FileData[I].ContentFileData.Length;
+			ContentFileContents.FileData[I].ContentFileData = emptyBinkVideo;
+			int sizeChange = emptyBinkVideo.Length - oldFileSize;
+
 			DecompressedIndexData.AllFileEntries[I].ContentFileDataSize = emptyBinkVideo.Length;
 			for (int j = I + 1; j < DecompressedIndexData.NumberOfFiles; j++)
 			{

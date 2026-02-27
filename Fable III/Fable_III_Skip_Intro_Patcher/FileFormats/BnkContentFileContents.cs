@@ -27,6 +27,14 @@ public struct BnkContentFileContents
 
 		return fileContents;
 	}
+
+	public void WriteToStream(Stream BytesDestination)
+	{
+		for (int i = 0; i < FileData.Length; i++)
+		{
+			FileData[i].WriteToStream(BytesDestination);
+		}
+	}
 }
 
 public struct BnkContentFileData
@@ -51,6 +59,11 @@ public struct BnkContentFileData
 				$"Tried to read {FileEntry.ContentFileDataSize} bytes, got {bytesRead} instead."
 			);
 		}
+	}
+
+	public void WriteToStream(Stream BytesDestination)
+	{
+		BytesDestination.Write(ContentFileData);
 	}
 
 	public byte[] DecompressData(ref BnkContentFileEntry FileEntry)
