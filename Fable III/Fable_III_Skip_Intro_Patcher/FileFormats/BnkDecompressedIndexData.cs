@@ -6,33 +6,60 @@ namespace Fable3SkipIntroPatcher.FileFormats;
 
 public class BnkDecompressedIndexData
 {
-	public byte[] DecompressedData;
+	// ReSharper disable once MemberCanBePrivate.Global
+	public int Unknown_AlwaysEqualToZero;
 	public int NumberOfFiles;
 	public BnkContentFileEntry[] AllFileEntries;
 
+	private bool isContentDataCompressed;
+
 	public BnkDecompressedIndexData(ref BnkIndexFileFormat IndexFile)
 	{
-		DecompressedData = decompressIndexFileData(ref IndexFile, out int totalDecompressedDataSize);
+		isContentDataCompressed = IndexFile.IsBnkContentDataCompressed;
 
-		using (MemoryStream decompressedDataStream = new(DecompressedData, 0, totalDecompressedDataSize))
+		byte[] decompressedData = decompressIndexFileData(ref IndexFile, out int totalDecompressedDataSize);
+
+		using (MemoryStream decompressedDataStream = new(decompressedData, 0, totalDecompressedDataSize))
 		{
-			int unknown_AlwaysEqualToZero = decompressedDataStream.ReadBigEndianInt32();
-			if (unknown_AlwaysEqualToZero != 0)
+			Unknown_AlwaysEqualToZero = decompressedDataStream.ReadBigEndianInt32();
+			if (Unknown_AlwaysEqualToZero != 0)
 			{
-				Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {unknown_AlwaysEqualToZero} instead.");
+				Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {Unknown_AlwaysEqualToZero} instead.");
 			}
 
 			NumberOfFiles = decompressedDataStream.ReadBigEndianInt32();
 			AllFileEntries = new BnkContentFileEntry[NumberOfFiles];
 			for (int i = 0; i < NumberOfFiles; i++)
 			{
-				AllFileEntries[i] = new(decompressedDataStream, IndexFile.IsBnkContentDataCompressed);
+				AllFileEntries[i] = new(decompressedDataStream, isContentDataCompressed);
 			}
 
 			for (int i = 0; i < NumberOfFiles; i++)
 			{
 				AllFileEntries[i].ReadFilePathStringsFromStream(decompressedDataStream);
 			}
+		}
+	}
+
+	public void CompressAndWriteToIndexFile(ref BnkIndexFileFormat IndexFile)
+	{
+		using (MemoryStream decompresedData = new())
+		{
+			decompresedData.WriteBigEndianInt32(Unknown_AlwaysEqualToZero);
+			decompresedData.WriteBigEndianInt32(NumberOfFiles);
+
+			for (int i = 0; i < AllFileEntries.Length; i++)
+			{
+				AllFileEntries[i].WriteIntegersToStream(decompresedData, isContentDataCompressed);
+			}
+
+			for (int i = 0; i < AllFileEntries.Length; i++)
+			{
+				AllFileEntries[i].WriteFilePathStringsToStream(decompresedData);
+			}
+
+			uint totalDecompressedDataSize = (uint)decompresedData.Position;
+			decompresedData.Position = 0;
 		}
 	}
 
@@ -60,7 +87,7 @@ public class BnkDecompressedIndexData
 		byte[] decompressedData = new byte[TotalDecompressedDataSize];
 		Inflater inflater = new();
 		inflater.SetInput(collatedCompressedDataBorrowedArray, 0, totalCompressedDataSize);
-		int decompressedSize = inflater.Inflate(DecompressedData, 0, TotalDecompressedDataSize);
+		int decompressedSize = inflater.Inflate(decompressedData, 0, TotalDecompressedDataSize);
 		if (decompressedSize != TotalDecompressedDataSize)
 		{
 			throw new InvalidDataException(
@@ -84,6 +111,7 @@ public class BnkContentFileEntry
 	public int[] ChunkDecompressedSizes = Array.Empty<int>();
 
 	public string FilePath = string.Empty;
+	public byte EndOfFilePathMarker;
 
 	public BnkContentFileEntry(Stream DecompressedData, bool IsContentCompressed)
 	{
@@ -126,8 +154,8 @@ public class BnkContentFileEntry
 		ArrayPool<byte>.Shared.Return(filePathStringBytesArray);
 
 		DecompressedDataStream.Position += 28;     // Skip over 28 NUL bytes
-		int endOfFileEntry = DecompressedDataStream.ReadByte();
-		if (endOfFileEntry == 0)
+		EndOfFilePathMarker = (byte)DecompressedDataStream.ReadByte();
+		if (EndOfFilePathMarker == 0)
 		{
 			throw new InvalidDataException(
 				$"Error: {nameof(BnkContentFileEntry)}: Byte at {DecompressedDataStream.Position} was supposed to indicate the end of a file path string with a non-zero byte. " +
@@ -148,6 +176,55 @@ public class BnkContentFileEntry
 				$"Expected 0x{FileNameHash:x}, got 0x{calculatedFilePathHash:x} instead. This could indicate data corruption."
 			);
 		}
+	}
+
+	public void WriteIntegersToStream(Stream TargetStream, bool IsContentCompressed)
+	{
+		TargetStream.WriteBigEndianUInt32(FileNameHash);
+		TargetStream.WriteBigEndianUInt32(FileOffset);
+
+		if (IsContentCompressed)
+		{
+			TargetStream.WriteBigEndianInt32(TotalDecompressedDataSize);
+		}
+
+		TargetStream.WriteBigEndianInt32(ContentFileDataSize);
+
+		if (IsContentCompressed)
+		{
+			TargetStream.WriteBigEndianInt32(NumChunks);
+			for (int i = 0; i < NumChunks; i++)
+			{
+				TargetStream.WriteBigEndianInt32(ChunkDecompressedSizes[i]);
+			}
+		}
+	}
+
+	public void WriteFilePathStringsToStream(Stream TargetStream)
+	{
+		TargetStream.WriteBigEndianInt32(FilePath.Length + 1);	// Need to account for NUL termination that isn't present in C# strings.
+
+		byte[] filePathStringBytesArray =  ArrayPool<byte>.Shared.Rent(FilePath.Length);
+		Span<byte> filePathStringBytes = filePathStringBytesArray.AsSpan(0, FilePath.Length);
+
+		int bytesEncoded = Encoding.ASCII.GetBytes(FilePath, filePathStringBytes);
+		if (bytesEncoded != FilePath.Length)
+		{
+			throw new InvalidDataException(
+				$"Error: {nameof(BnkContentFileEntry)}: Encoding error while trying to convert {FilePath} into a stream of bytes. " +
+				$"Expected {FilePath.Length} bytes, got {bytesEncoded} instead."
+			);
+		}
+
+		TargetStream.Write(filePathStringBytes);
+		ArrayPool<byte>.Shared.Return(filePathStringBytesArray);
+
+		for (int i = 0; i < 28; i++)
+		{
+			TargetStream.WriteByte(0);	// Write 28 NUL bytes.
+		}
+
+		TargetStream.WriteByte(EndOfFilePathMarker);
 	}
 }
 

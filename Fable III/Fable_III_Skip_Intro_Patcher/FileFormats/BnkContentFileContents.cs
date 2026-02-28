@@ -22,7 +22,10 @@ public struct BnkContentFileContents
 		fileContents.FileData = new BnkContentFileData[FileEntries.NumberOfFiles];
 		for (int i = 0; i < FileEntries.NumberOfFiles; i++)
 		{
-			fileContents.FileData[i] = new(ContentFile, ref FileEntries.AllFileEntries[i], IsContentDataCompressed);
+			uint paddingSize = (i != (FileEntries.NumberOfFiles - 1)) ?	// Is this the last file in the Content File?
+				(uint)((FileEntries.AllFileEntries[i + 1].FileOffset - FileEntries.AllFileEntries[i].FileOffset) - FileEntries.AllFileEntries[i].ContentFileDataSize) :
+				0;	// No padding is present for last file.
+			fileContents.FileData[i] = new(ContentFile, ref FileEntries.AllFileEntries[i], (int)paddingSize, IsContentDataCompressed);
 		}
 
 		return fileContents;
@@ -41,22 +44,33 @@ public struct BnkContentFileData
 {
 	public byte[] ContentFileData;
 
+	// Files are aligned to 16 byte boundaries (except for the last one). If the file's size is not a multiple of 16, padding is added to make the next file start at this boundary.
+	public byte[] Padding;
+
 	private bool isContentDataCompressed;
 
 	private const int COMPRESSED_CHUNK_SIZE = 32768;	// Compressed data is stored in chunks of 32KB.
 
-	public BnkContentFileData(Stream ContentFile, ref BnkContentFileEntry FileEntry, bool IsContentDataCompressed)
+	public BnkContentFileData(Stream ContentFile, ref BnkContentFileEntry FileEntry, int PaddingSize, bool IsContentDataCompressed)
 	{
 		isContentDataCompressed = IsContentDataCompressed;
 		ContentFileData = new byte[FileEntry.ContentFileDataSize];
-		ContentFile.Position = FileEntry.FileOffset;
-		int bytesRead = ContentFile.Read(ContentFileData,  0, FileEntry.ContentFileDataSize);
-
-		if (bytesRead != FileEntry.ContentFileDataSize)
+		int contentBytesRead = ContentFile.Read(ContentFileData,  0, FileEntry.ContentFileDataSize);
+		if (contentBytesRead != FileEntry.ContentFileDataSize)
 		{
 			throw new InvalidDataException(
 				$"Error: {nameof(BnkContentFileData)}: Read error for data ending at {ContentFile.Position}. " +
-				$"Tried to read {FileEntry.ContentFileDataSize} bytes, got {bytesRead} instead."
+				$"Tried to read {FileEntry.ContentFileDataSize} bytes, got {contentBytesRead} instead."
+			);
+		}
+
+		Padding = new byte[PaddingSize];
+		int paddingBytesRead = ContentFile.Read(Padding,  0, PaddingSize);
+		if (paddingBytesRead != PaddingSize)
+		{
+			throw new InvalidDataException(
+				$"Error: {nameof(BnkContentFileData)}: Read error for padding ending at {ContentFile.Position}. " +
+				$"Tried to read {PaddingSize} bytes, got {paddingBytesRead} instead."
 			);
 		}
 	}
@@ -64,6 +78,11 @@ public struct BnkContentFileData
 	public void WriteToStream(Stream BytesDestination)
 	{
 		BytesDestination.Write(ContentFileData);
+
+		if (Padding.Length > 0)
+		{
+			BytesDestination.Write(Padding);
+		}
 	}
 
 	public byte[] DecompressData(ref BnkContentFileEntry FileEntry)

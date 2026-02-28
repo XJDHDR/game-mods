@@ -42,6 +42,10 @@ public struct BnkIndexFileFormat
 		}
 		CompressedIndexDataChunks = compressedDataChunks.ToArray();
 	}
+
+	public void WriteToStream(Stream BytesDestination)
+	{
+	}
 }
 
 public struct BnkIndexCompressedDataChunk
