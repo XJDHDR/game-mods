@@ -41,26 +41,31 @@ public class BnkDecompressedIndexData
 		}
 	}
 
-	public void CompressAndWriteToIndexFile(ref BnkIndexFileFormat IndexFile)
+	public BnkIndexFileFormat CompressAndWriteToIndexFile()
 	{
-		using (MemoryStream decompresedData = new())
+		byte[] decompresedData;
+		using (MemoryStream decompresedDataStream = new())
 		{
-			decompresedData.WriteBigEndianInt32(Unknown_AlwaysEqualToZero);
-			decompresedData.WriteBigEndianInt32(NumberOfFiles);
+			decompresedDataStream.WriteBigEndianInt32(Unknown_AlwaysEqualToZero);
+			decompresedDataStream.WriteBigEndianInt32(NumberOfFiles);
 
 			for (int i = 0; i < AllFileEntries.Length; i++)
 			{
-				AllFileEntries[i].WriteIntegersToStream(decompresedData, isContentDataCompressed);
+				AllFileEntries[i].WriteIntegersToStream(decompresedDataStream, isContentDataCompressed);
 			}
 
 			for (int i = 0; i < AllFileEntries.Length; i++)
 			{
-				AllFileEntries[i].WriteFilePathStringsToStream(decompresedData);
+				AllFileEntries[i].WriteFilePathStringsToStream(decompresedDataStream);
 			}
 
-			uint totalDecompressedDataSize = (uint)decompresedData.Position;
-			decompresedData.Position = 0;
+			decompresedData = decompresedDataStream.ToArray();
 		}
+
+		BnkIndexFileFormat indexFile = new(decompresedData);
+
+
+		return indexFile;
 	}
 
 	private byte[] decompressIndexFileData(ref BnkIndexFileFormat IndexFile, out int TotalDecompressedDataSize)

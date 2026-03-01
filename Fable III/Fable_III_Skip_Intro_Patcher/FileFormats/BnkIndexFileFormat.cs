@@ -2,6 +2,8 @@
 
 public struct BnkIndexFileFormat
 {
+	private const int MAX_DECOMPRESSED_DATA_CHUNK_SIZE = 65536;
+
 	public uint TotalDataSize;
 	public uint Unknown_AlwaysEqualToFour;
 	public bool IsBnkContentDataCompressed;
@@ -32,15 +34,31 @@ public struct BnkIndexFileFormat
 		IsBnkContentDataCompressed = (BnkIndexData.ReadByte() != 0);
 
 		List<BnkIndexCompressedDataChunk> compressedDataChunks = new();
-		List<byte> compressedData = new();
 		int i = 0;
 		while (BnkIndexData.Position < BnkIndexData.Length)
 		{
-			compressedDataChunks.Add(BnkIndexCompressedDataChunk.CreateFromFileStream(BnkIndexData));
-			compressedData.AddRange(compressedDataChunks[i].CompressedData);
+			compressedDataChunks.Add(new(BnkIndexData));
 			i++;
 		}
 		CompressedIndexDataChunks = compressedDataChunks.ToArray();
+	}
+
+	public BnkIndexFileFormat(byte[] DecompressedData)
+	{
+		int currentArrayPos = 0;
+		List<BnkIndexCompressedDataChunk> compressedDataChunks = new();
+
+		while (currentArrayPos < DecompressedData.Length)
+		{
+			int chunkSize = ((DecompressedData.Length - currentArrayPos) <= MAX_DECOMPRESSED_DATA_CHUNK_SIZE) ?
+				DecompressedData.Length - currentArrayPos :
+				MAX_DECOMPRESSED_DATA_CHUNK_SIZE;
+			ReadOnlySpan<byte> decompressedDataChunk = DecompressedData.AsSpan(currentArrayPos, chunkSize);
+			compressedDataChunks.Add(new(decompressedDataChunk));
+
+			currentArrayPos += chunkSize;
+		}
+
 	}
 
 	public void WriteToStream(Stream BytesDestination)
@@ -54,22 +72,23 @@ public struct BnkIndexCompressedDataChunk
 	public int DecompressedDataSize;	// Seems to always be 65536 bytes (except for last chunk).
 	public byte[] CompressedData;
 
-	public static BnkIndexCompressedDataChunk CreateFromFileStream(Stream BnkIndexData)
+	public BnkIndexCompressedDataChunk(Stream BnkIndexData)
 	{
-		BnkIndexCompressedDataChunk compressedDataChunk = new();
+		CompressedDataSize = BnkIndexData.ReadBigEndianInt32();
+		DecompressedDataSize = BnkIndexData.ReadBigEndianInt32();
+		CompressedData =  new byte[CompressedDataSize];
 
-		compressedDataChunk.CompressedDataSize = BnkIndexData.ReadBigEndianInt32();
-		compressedDataChunk.DecompressedDataSize = BnkIndexData.ReadBigEndianInt32();
-		compressedDataChunk.CompressedData =  new byte[compressedDataChunk.CompressedDataSize];
-
-		int bytesReadFromFile = BnkIndexData.Read(compressedDataChunk.CompressedData, 0, compressedDataChunk.CompressedDataSize);
-		if (bytesReadFromFile != compressedDataChunk.CompressedDataSize)
+		int bytesReadFromFile = BnkIndexData.Read(CompressedData, 0, CompressedDataSize);
+		if (bytesReadFromFile != CompressedDataSize)
 		{
 			throw new InvalidDataException(
-				$"Error: BnkIndexCompressedDataChunk: Read error for compressed data ending at 0x{BnkIndexData.Position:x}. Tried to read {compressedDataChunk.CompressedDataSize} bytes, got {bytesReadFromFile} instead."
+				$"Error: BnkIndexCompressedDataChunk: Read error for compressed data ending at 0x{BnkIndexData.Position:x}. Tried to read {CompressedDataSize} bytes, got {bytesReadFromFile} instead."
 			);
 		}
+	}
 
-		return compressedDataChunk;
+	public BnkIndexCompressedDataChunk(ReadOnlySpan<byte> DecompressedDataSegment)
+	{
+		DecompressedDataSize =  DecompressedDataSegment.Length;
 	}
 }

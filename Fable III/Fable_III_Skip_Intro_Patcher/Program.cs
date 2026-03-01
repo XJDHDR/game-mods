@@ -54,8 +54,7 @@ class Program
 
 		Console.Write("Writing new levels.bnk to file system ...");
 		startTime = Stopwatch.GetTimestamp();
-		BnkIndexFileFormat newIndexFile = new();
-		decompressedIndexData.CompressAndWriteToIndexFile(ref newIndexFile);
+		BnkIndexFileFormat newIndexFile = decompressedIndexData.CompressAndWriteToIndexFile();
 		endTime = Stopwatch.GetTimestamp();
 		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
