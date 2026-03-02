@@ -6,7 +6,6 @@
 //  List of this Source Code Form's contributors:
 //  - Xavier "XJDHDR" du Hecquet de Rauville
 
-using System.Buffers;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 
 namespace Fable3SkipIntroPatcher.FileFormats;

@@ -41,7 +41,7 @@ public class BnkDecompressedIndexData
 		}
 	}
 
-	public BnkIndexFileFormat CompressAndWriteToIndexFile()
+	public BnkIndexFileFormat CompressAndWriteToIndexFile(bool IsContentDataCompressed)
 	{
 		byte[] decompresedData;
 		using (MemoryStream decompresedDataStream = new())
@@ -62,9 +62,7 @@ public class BnkDecompressedIndexData
 			decompresedData = decompresedDataStream.ToArray();
 		}
 
-		BnkIndexFileFormat indexFile = new(decompresedData);
-
-
+		BnkIndexFileFormat indexFile = new(decompresedData, IsContentDataCompressed);
 		return indexFile;
 	}
 

@@ -1,4 +1,6 @@
-﻿namespace Fable3SkipIntroPatcher.FileFormats;
+﻿using System.IO.Compression;
+
+namespace Fable3SkipIntroPatcher.FileFormats;
 
 public struct BnkIndexFileFormat
 {
@@ -43,26 +45,59 @@ public struct BnkIndexFileFormat
 		CompressedIndexDataChunks = compressedDataChunks.ToArray();
 	}
 
-	public BnkIndexFileFormat(byte[] DecompressedData)
+	public BnkIndexFileFormat(byte[] UncompressedData, bool IsContentDataCompressed)
 	{
+		using MemoryStream compressedDataStream = new();
+
 		int currentArrayPos = 0;
+		uint totalSize = (2 * sizeof(uint)) + sizeof(bool);
 		List<BnkIndexCompressedDataChunk> compressedDataChunks = new();
 
-		while (currentArrayPos < DecompressedData.Length)
+		ZLibCompressionOptions compressionOptions = new()
 		{
-			int chunkSize = ((DecompressedData.Length - currentArrayPos) <= MAX_DECOMPRESSED_DATA_CHUNK_SIZE) ?
-				DecompressedData.Length - currentArrayPos :
-				MAX_DECOMPRESSED_DATA_CHUNK_SIZE;
-			ReadOnlySpan<byte> decompressedDataChunk = DecompressedData.AsSpan(currentArrayPos, chunkSize);
-			compressedDataChunks.Add(new(decompressedDataChunk));
+			CompressionLevel = 9,
+			CompressionStrategy = ZLibCompressionStrategy.Default
+		};
+		using (ZLibStream zlibOutputStream = new(compressedDataStream, compressionOptions, true))
+		{
+			for (int i = 0; currentArrayPos < UncompressedData.Length; i++)
+			{
+				int chunkSize = ((UncompressedData.Length - currentArrayPos) > MAX_DECOMPRESSED_DATA_CHUNK_SIZE) ?
+					MAX_DECOMPRESSED_DATA_CHUNK_SIZE :
+					UncompressedData.Length - currentArrayPos;
+				ReadOnlySpan<byte> decompressedDataChunk = UncompressedData.AsSpan(currentArrayPos, chunkSize);
+				compressedDataChunks.Add(new(zlibOutputStream, decompressedDataChunk));
 
-			currentArrayPos += chunkSize;
+				currentArrayPos += chunkSize;
+				totalSize += (uint)((2 * sizeof(int)) + compressedDataChunks[i].CompressedData.Length);
+			}
 		}
 
+		TotalDataSize = totalSize;
+		Unknown_AlwaysEqualToFour = 4;
+		IsBnkContentDataCompressed = IsContentDataCompressed;
+		CompressedIndexDataChunks = compressedDataChunks.ToArray();
+
+		compressedDataStream.Position = 0;
+		for (int i = 0; i < CompressedIndexDataChunks.Length; i++)
+		{
+			CompressedIndexDataChunks[i].FillCompressedDataArrayFromStream(compressedDataStream);
+		}
 	}
 
 	public void WriteToStream(Stream BytesDestination)
 	{
+		BytesDestination.WriteBigEndianUInt32(TotalDataSize);
+		BytesDestination.WriteBigEndianUInt32(Unknown_AlwaysEqualToFour);
+		byte isBnkDataCompressedByteRepresentation = (IsBnkContentDataCompressed) ?
+			(byte)1 :
+			(byte)0;
+		BytesDestination.WriteByte(isBnkDataCompressedByteRepresentation);
+
+		for (int i = 0; i < CompressedIndexDataChunks.Length; i++)
+		{
+			CompressedIndexDataChunks[i].WriteToStream(BytesDestination);
+		}
 	}
 }
 
@@ -87,8 +122,34 @@ public struct BnkIndexCompressedDataChunk
 		}
 	}
 
-	public BnkIndexCompressedDataChunk(ReadOnlySpan<byte> DecompressedDataSegment)
+	public BnkIndexCompressedDataChunk(ZLibStream ZLibOutputStream, ReadOnlySpan<byte> UncompressedDataSegment)
 	{
-		DecompressedDataSize =  DecompressedDataSegment.Length;
+		DecompressedDataSize =  UncompressedDataSegment.Length;
+
+		long startPos = ZLibOutputStream.BaseStream.Position;
+		ZLibOutputStream.Write(UncompressedDataSegment);
+		ZLibOutputStream.Flush();
+		long endPos = ZLibOutputStream.BaseStream.Position;
+
+		CompressedDataSize = (int)(endPos - startPos);
+		CompressedData = new byte[CompressedDataSize];
+	}
+
+	public void FillCompressedDataArrayFromStream(Stream BytesSource)
+	{
+		int bytesRead = BytesSource.Read(CompressedData, 0, CompressedDataSize);
+		if (bytesRead != CompressedDataSize)
+		{
+			throw new InvalidDataException(
+				$"Error: {nameof(BnkIndexFileFormat)}: Read error for compressed data ending at 0x{BytesSource.Position:x}. Tried to read {CompressedDataSize} bytes, got {bytesRead} instead."
+			);
+		}
+	}
+
+	public void WriteToStream(Stream BytesDestination)
+	{
+		BytesDestination.WriteBigEndianInt32(CompressedDataSize);
+		BytesDestination.WriteBigEndianInt32(DecompressedDataSize);
+		BytesDestination.Write(CompressedData);
 	}
 }

@@ -3,7 +3,7 @@ using Fable3SkipIntroPatcher.FileFormats;
 
 namespace Fable3SkipIntroPatcher;
 
-class Program
+internal static class Program
 {
 	private static void Main()
 	{
@@ -31,8 +31,8 @@ class Program
 		{
 			Console.Write("Backing up original files ...");
 			startTime = Stopwatch.GetTimestamp();
-			File.Move("E:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat", "E:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk.dat");
-			File.Move("E:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk", "E:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk");
+			File.Move("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat", "D:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk.dat");
+			File.Move("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk", "D:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk");
 			endTime = Stopwatch.GetTimestamp();
 			elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
 			Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
@@ -42,7 +42,7 @@ class Program
 		/*
 		Console.Write("Writing new levels.bnk.dat to file system ...");
 		startTime = Stopwatch.GetTimestamp();
-		using (FileStream bnkContentFileStream = File.Create("E:/Games/Steam/steamapps/common/Fable 3/data/levels-new.bnk.dat"))
+		using (FileStream bnkContentFileStream = File.Create("D:/Games/Steam/steamapps/common/Fable 3/data/levels-new.bnk.dat"))
 		{
 			bnkContentFile.WriteToStream(bnkContentFileStream);
 		}
@@ -54,7 +54,11 @@ class Program
 
 		Console.Write("Writing new levels.bnk to file system ...");
 		startTime = Stopwatch.GetTimestamp();
-		BnkIndexFileFormat newIndexFile = decompressedIndexData.CompressAndWriteToIndexFile();
+		BnkIndexFileFormat newIndexFile = decompressedIndexData.CompressAndWriteToIndexFile(bnkIndexFile.IsBnkContentDataCompressed);
+		using (FileStream bnkIndexFileStream = File.Create("D:/Games/Steam/steamapps/common/Fable 3/data/levels-new.bnk"))
+		{
+			newIndexFile.WriteToStream(bnkIndexFileStream);
+		}
 		endTime = Stopwatch.GetTimestamp();
 		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
@@ -67,7 +71,7 @@ class Program
 	{
 		Console.Write("Reading levels.bnk ...");
 		long startTime = Stopwatch.GetTimestamp();
-		using (FileStream bnkIndexFileStream = File.OpenRead("E:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk"))
+		using (FileStream bnkIndexFileStream = File.OpenRead("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk"))
 		{
 			BnkIndexFile = new(bnkIndexFileStream);
 		}
@@ -86,7 +90,7 @@ class Program
 
 		Console.Write("Reading levels.bnk.dat ...");
 		startTime = Stopwatch.GetTimestamp();
-		using (FileStream bnkContentFileStream = File.OpenRead("E:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat"))
+		using (FileStream bnkContentFileStream = File.OpenRead("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat"))
 		{
 			BnkContentFile = BnkContentFileContents.CreateFromStream(bnkContentFileStream, ref DecompressedIndexData, BnkIndexFile.IsBnkContentDataCompressed);
 		}
