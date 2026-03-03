@@ -6,7 +6,7 @@
 //  List of this Source Code Form's contributors:
 //  - Xavier "XJDHDR" du Hecquet de Rauville
 
-using ICSharpCode.SharpZipLib.Zip.Compression;
+using System.IO.Compression;
 
 namespace Fable3SkipIntroPatcher.FileFormats;
 
@@ -21,10 +21,10 @@ public struct BnkContentFileContents
 		fileContents.FileData = new BnkContentFileData[FileEntries.NumberOfFiles];
 		for (int i = 0; i < FileEntries.NumberOfFiles; i++)
 		{
-			uint paddingSize = (i != (FileEntries.NumberOfFiles - 1)) ?	// Is this the last file in the Content File?
-				(uint)((FileEntries.AllFileEntries[i + 1].FileOffset - FileEntries.AllFileEntries[i].FileOffset) - FileEntries.AllFileEntries[i].ContentFileDataSize) :
+			int paddingSize = (i != (FileEntries.NumberOfFiles - 1)) ?	// Is this the last file in the Content File?
+				(int)((FileEntries.AllFileEntries[i + 1].FileOffset - FileEntries.AllFileEntries[i].FileOffset) - FileEntries.AllFileEntries[i].ContentFileDataSize) :
 				0;	// No padding is present for last file.
-			fileContents.FileData[i] = new(ContentFile, ref FileEntries.AllFileEntries[i], (int)paddingSize, IsContentDataCompressed);
+			fileContents.FileData[i] = new(ContentFile, ref FileEntries.AllFileEntries[i], paddingSize, IsContentDataCompressed);
 		}
 
 		return fileContents;
@@ -54,24 +54,10 @@ public struct BnkContentFileData
 	{
 		isContentDataCompressed = IsContentDataCompressed;
 		ContentFileData = new byte[FileEntry.ContentFileDataSize];
-		int contentBytesRead = ContentFile.Read(ContentFileData,  0, FileEntry.ContentFileDataSize);
-		if (contentBytesRead != FileEntry.ContentFileDataSize)
-		{
-			throw new InvalidDataException(
-				$"Error: {nameof(BnkContentFileData)}: Read error for data ending at {ContentFile.Position}. " +
-				$"Tried to read {FileEntry.ContentFileDataSize} bytes, got {contentBytesRead} instead."
-			);
-		}
+		ContentFile.ReadExactly(ContentFileData,  0, FileEntry.ContentFileDataSize);
 
 		Padding = new byte[PaddingSize];
-		int paddingBytesRead = ContentFile.Read(Padding,  0, PaddingSize);
-		if (paddingBytesRead != PaddingSize)
-		{
-			throw new InvalidDataException(
-				$"Error: {nameof(BnkContentFileData)}: Read error for padding ending at {ContentFile.Position}. " +
-				$"Tried to read {PaddingSize} bytes, got {paddingBytesRead} instead."
-			);
-		}
+		ContentFile.ReadExactly(Padding,  0, PaddingSize);
 	}
 
 	public void WriteToStream(Stream BytesDestination)
@@ -92,31 +78,31 @@ public struct BnkContentFileData
 			return ContentFileData;
 		}
 
-		byte[] decompressedData =  new byte[FileEntry.TotalDecompressedDataSize];
-		int sizeOfRemainingData = FileEntry.ContentFileDataSize;
-		Inflater inflator = new();
+		using MemoryStream decompressedDataStream = new();
 
-		int decompressedBytesWritten = 0;
 		for (int i = 0; i < FileEntry.NumChunks; i++)
 		{
 			int thisChunkOffset = i * COMPRESSED_CHUNK_SIZE;
-			int thisChunkSize = (sizeOfRemainingData < COMPRESSED_CHUNK_SIZE) ? sizeOfRemainingData : COMPRESSED_CHUNK_SIZE;
+			int thisChunkSize = (i >= (FileEntry.NumChunks - 1)) ?
+				COMPRESSED_CHUNK_SIZE :
+				FileEntry.ContentFileDataSize - thisChunkOffset;
 
-			inflator.SetInput(ContentFileData, thisChunkOffset, thisChunkSize);
-			int deflatedChunkSize = inflator.Inflate(decompressedData, decompressedBytesWritten, FileEntry.ChunkDecompressedSizes[i]);
-			if (deflatedChunkSize != FileEntry.ChunkDecompressedSizes[i])
+			using MemoryStream compressedDataChunk = new(ContentFileData, thisChunkOffset, thisChunkSize);
+			using ZLibStream zlibDecompressionStream = new(compressedDataChunk, CompressionMode.Decompress, true);
+
+			long startPos = decompressedDataStream.Position;
+			zlibDecompressionStream.CopyTo(decompressedDataStream);
+			long decompressedBytes = decompressedDataStream.Position - startPos;
+
+			if (decompressedBytes != FileEntry.ChunkDecompressedSizes[i])
 			{
 				throw new InvalidDataException(
 					$"Error: {nameof(BnkContentFileData)}: Inflate error for file: {FileEntry.FilePath}. " +
-					$"Decompressed data was supposed to be {FileEntry.ChunkDecompressedSizes[i]} bytes, got {deflatedChunkSize} instead."
+					$"Decompressed data was supposed to be {FileEntry.ChunkDecompressedSizes[i]} bytes, got {decompressedBytes} instead."
 				);
 			}
-
-			inflator.Reset();
-			sizeOfRemainingData -= COMPRESSED_CHUNK_SIZE;
-			decompressedBytesWritten += FileEntry.ChunkDecompressedSizes[i];
 		}
 
-		return decompressedData;
+		return decompressedDataStream.ToArray();
 	}
 }

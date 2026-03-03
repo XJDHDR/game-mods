@@ -1,6 +1,6 @@
 ﻿using System.Buffers;
+using System.IO.Compression;
 using System.Text;
-using ICSharpCode.SharpZipLib.Zip.Compression;
 
 namespace Fable3SkipIntroPatcher.FileFormats;
 
@@ -43,61 +43,56 @@ public class BnkDecompressedIndexData
 
 	public BnkIndexFileFormat CompressAndWriteToIndexFile(bool IsContentDataCompressed)
 	{
-		byte[] decompresedData;
-		using (MemoryStream decompresedDataStream = new())
+		byte[] decompressedData;
+		using (MemoryStream decompressedDataStream = new())
 		{
-			decompresedDataStream.WriteBigEndianInt32(Unknown_AlwaysEqualToZero);
-			decompresedDataStream.WriteBigEndianInt32(NumberOfFiles);
+			decompressedDataStream.WriteBigEndianInt32(Unknown_AlwaysEqualToZero);
+			decompressedDataStream.WriteBigEndianInt32(NumberOfFiles);
 
 			for (int i = 0; i < AllFileEntries.Length; i++)
 			{
-				AllFileEntries[i].WriteIntegersToStream(decompresedDataStream, isContentDataCompressed);
+				AllFileEntries[i].WriteIntegersToStream(decompressedDataStream, isContentDataCompressed);
 			}
 
 			for (int i = 0; i < AllFileEntries.Length; i++)
 			{
-				AllFileEntries[i].WriteFilePathStringsToStream(decompresedDataStream);
+				AllFileEntries[i].WriteFilePathStringsToStream(decompressedDataStream);
 			}
 
-			decompresedData = decompresedDataStream.ToArray();
+			decompressedData = decompressedDataStream.ToArray();
 		}
 
-		BnkIndexFileFormat indexFile = new(decompresedData, IsContentDataCompressed);
+		BnkIndexFileFormat indexFile = new(decompressedData, IsContentDataCompressed);
 		return indexFile;
 	}
 
 	private byte[] decompressIndexFileData(ref BnkIndexFileFormat IndexFile, out int TotalDecompressedDataSize)
 	{
-		int totalCompressedDataSize = 0;
 		TotalDecompressedDataSize = 0;
+		using MemoryStream compressedDataStream = new();
+
 		for (int i = 0; i < IndexFile.CompressedIndexDataChunks.Length; i++)
 		{
-			totalCompressedDataSize += IndexFile.CompressedIndexDataChunks[i].CompressedDataSize;
+			long startPos = compressedDataStream.Position;
+			compressedDataStream.Write(IndexFile.CompressedIndexDataChunks[i].CompressedData, 0, IndexFile.CompressedIndexDataChunks[i].CompressedDataSize);
+			long endPos = compressedDataStream.Position;
+
+			if ((endPos - startPos) != IndexFile.CompressedIndexDataChunks[i].CompressedDataSize)
+			{
+				throw new InvalidDataException(
+					$"Error: {nameof(BnkDecompressedIndexData)}: Failed to read the correct amount of compressed data for decompression. Expected {IndexFile.CompressedIndexDataChunks[i].CompressedDataSize} bytes, got {endPos - startPos} instead."
+				);
+			}
+
 			TotalDecompressedDataSize += IndexFile.CompressedIndexDataChunks[i].DecompressedDataSize;
 		}
 
-		byte[] collatedCompressedDataBorrowedArray = ArrayPool<byte>.Shared.Rent(totalCompressedDataSize);
-		int destIndexPosition = 0;
-		for (int i = 0; i < IndexFile.CompressedIndexDataChunks.Length; i++)
-		{
-			Span<byte> compressedDataChunk = IndexFile.CompressedIndexDataChunks[i].CompressedData.AsSpan();
-			Span<byte> currentSectionOfCollatedData = collatedCompressedDataBorrowedArray.AsSpan(destIndexPosition, compressedDataChunk.Length);
-
-			compressedDataChunk.CopyTo(currentSectionOfCollatedData);
-			destIndexPosition += compressedDataChunk.Length;
-		}
-
+		compressedDataStream.Position = 0;
 		byte[] decompressedData = new byte[TotalDecompressedDataSize];
-		Inflater inflater = new();
-		inflater.SetInput(collatedCompressedDataBorrowedArray, 0, totalCompressedDataSize);
-		int decompressedSize = inflater.Inflate(decompressedData, 0, TotalDecompressedDataSize);
-		if (decompressedSize != TotalDecompressedDataSize)
-		{
-			throw new InvalidDataException(
-				$"Error: {nameof(BnkDecompressedIndexData)}: Deflated data was not the correct size. Expected {TotalDecompressedDataSize} bytes, got {decompressedSize} instead."
-			);
-		}
-		ArrayPool<byte>.Shared.Return(collatedCompressedDataBorrowedArray);
+
+		using ZLibStream zLibDecompressionStream = new(compressedDataStream, CompressionMode.Decompress, true);
+		zLibDecompressionStream.ReadExactly(decompressedData, 0, TotalDecompressedDataSize);
+
 		return decompressedData;
 	}
 }
@@ -115,6 +110,9 @@ public class BnkContentFileEntry
 
 	public string FilePath = string.Empty;
 	public byte EndOfFilePathMarker;
+
+	private const uint FNV1_HASH_SEED = 0x811c9dc5;
+	private const uint FNV1_PRIME = 0x1000193;
 
 	public BnkContentFileEntry(Stream DecompressedData, bool IsContentCompressed)
 	{
@@ -143,15 +141,7 @@ public class BnkContentFileEntry
 		int filePathStringLength = DecompressedDataStream.ReadBigEndianInt32() - 1;   // String is null terminated so we don't need to read the last byte.
 		byte[] filePathStringBytesArray =  ArrayPool<byte>.Shared.Rent(filePathStringLength);
 		Span<byte> filePathStringBytes = filePathStringBytesArray.AsSpan(0, filePathStringLength);
-		int bytesRead = DecompressedDataStream.Read(filePathStringBytes);
-
-		if (bytesRead != filePathStringLength)
-		{
-			throw new InvalidDataException(
-				$"Error: {nameof(BnkContentFileEntry)}: Read error for compressed data ending at {DecompressedDataStream.Position}. " +
-				$"Tried to read {filePathStringLength} bytes, got {bytesRead} instead."
-			);
-		}
+		DecompressedDataStream.ReadExactly(filePathStringBytes);
 
 		FilePath = Encoding.ASCII.GetString(filePathStringBytes);
 		ArrayPool<byte>.Shared.Return(filePathStringBytesArray);
@@ -166,10 +156,10 @@ public class BnkContentFileEntry
 			);
 		}
 
-		uint calculatedFilePathHash = 0x811c9dc5;
+		uint calculatedFilePathHash = FNV1_HASH_SEED;
 		for (int j = 0; j < FilePath.Length; ++j)
 		{
-			calculatedFilePathHash = (calculatedFilePathHash * 0x1000193) ^ (byte)FilePath[j];
+			calculatedFilePathHash = (calculatedFilePathHash * FNV1_PRIME) ^ (byte)FilePath[j];
 		}
 
 		if (calculatedFilePathHash != FileNameHash)

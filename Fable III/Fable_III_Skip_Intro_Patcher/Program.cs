@@ -11,18 +11,15 @@ internal static class Program
 
 		Console.Write("Writing blank videos to memory copies of BNK files ...");
 		long startTime = Stopwatch.GetTimestamp();
-		/*
 		for (int i = 0; i < decompressedIndexData.NumberOfFiles; i++)
 		{
 			if (decompressedIndexData.AllFileEntries[i].FilePath.Equals("art\\videos\\lionhead_logo.bik") || decompressedIndexData.AllFileEntries[i].FilePath.Equals("art\\videos\\microsoft_logo.bik"))
 			{
-				// i should be 35 for Microsoft video and 38 for Lionhead
+				// i should be 35 for the Microsoft video and 38 for Lionhead
 				BlankBinkVideo.ReplaceBnkContentFileEntry(i, ref bnkContentFile, ref decompressedIndexData, bnkIndexFile.IsBnkContentDataCompressed);
 			}
 		}
-		*/
-		long endTime = Stopwatch.GetTimestamp();
-		TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
 
@@ -33,24 +30,20 @@ internal static class Program
 			startTime = Stopwatch.GetTimestamp();
 			File.Move("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk.dat", "D:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk.dat");
 			File.Move("D:/Games/Steam/steamapps/common/Fable 3/data/levels.bnk", "D:/Games/Steam/steamapps/common/Fable 3/data/levels-backup.bnk");
-			endTime = Stopwatch.GetTimestamp();
-			elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+			elapsedTime = Stopwatch.GetElapsedTime(startTime);
 			Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 			Console.WriteLine();
 		}
 
-		/*
 		Console.Write("Writing new levels.bnk.dat to file system ...");
 		startTime = Stopwatch.GetTimestamp();
 		using (FileStream bnkContentFileStream = File.Create("D:/Games/Steam/steamapps/common/Fable 3/data/levels-new.bnk.dat"))
 		{
 			bnkContentFile.WriteToStream(bnkContentFileStream);
 		}
-		endTime = Stopwatch.GetTimestamp();
-		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
-		*/
 
 		Console.Write("Writing new levels.bnk to file system ...");
 		startTime = Stopwatch.GetTimestamp();
@@ -59,8 +52,7 @@ internal static class Program
 		{
 			newIndexFile.WriteToStream(bnkIndexFileStream);
 		}
-		endTime = Stopwatch.GetTimestamp();
-		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
 
@@ -75,16 +67,14 @@ internal static class Program
 		{
 			BnkIndexFile = new(bnkIndexFileStream);
 		}
-		long endTime = Stopwatch.GetTimestamp();
-		TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		TimeSpan elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
 
 		Console.Write("Decompressing levels.bnk file indices ...");
 		startTime = Stopwatch.GetTimestamp();
 		DecompressedIndexData = new(ref BnkIndexFile);
-		endTime = Stopwatch.GetTimestamp();
-		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
 
@@ -94,8 +84,7 @@ internal static class Program
 		{
 			BnkContentFile = BnkContentFileContents.CreateFromStream(bnkContentFileStream, ref DecompressedIndexData, BnkIndexFile.IsBnkContentDataCompressed);
 		}
-		endTime = Stopwatch.GetTimestamp();
-		elapsedTime = Stopwatch.GetElapsedTime(startTime, endTime);
+		elapsedTime = Stopwatch.GetElapsedTime(startTime);
 		Console.WriteLine($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.");
 		Console.WriteLine();
 	}
