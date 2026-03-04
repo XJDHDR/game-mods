@@ -1,4 +1,17 @@
-﻿using System.Buffers;
+﻿// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt
+//
+// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+// If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// This Source Code Form is "Incompatible With Secondary Licenses", as
+// defined by the Mozilla Public License, v. 2.0.
+//
+//  List of this Source Code Form's contributors:
+//  - Xavier "XJDHDR" du Hecquet de Rauville
+//
+
+
+using System.Buffers;
 using System.IO.Compression;
 using System.Text;
 
@@ -6,12 +19,17 @@ namespace Fable3SkipIntroPatcher.FileFormats;
 
 public class BnkDecompressedIndexData
 {
-	// ReSharper disable once MemberCanBePrivate.Global
+	// ReSharper disable MemberCanBePrivate.Global
+	// ReSharper disable FieldCanBeMadeReadOnly.Global
+	// ReSharper disable once InconsistentNaming
 	public int Unknown_AlwaysEqualToZero;
 	public int NumberOfFiles;
 	public BnkContentFileEntry[] AllFileEntries;
 
+	// ReSharper disable once FieldCanBeMadeReadOnly.Local
 	private bool isContentDataCompressed;
+	// ReSharper restore FieldCanBeMadeReadOnly.Global
+	// ReSharper restore MemberCanBePrivate.Global
 
 	public BnkDecompressedIndexData(ref BnkIndexFileFormat IndexFile)
 	{
@@ -19,25 +37,23 @@ public class BnkDecompressedIndexData
 
 		byte[] decompressedData = decompressIndexFileData(ref IndexFile, out int totalDecompressedDataSize);
 
-		using (MemoryStream decompressedDataStream = new(decompressedData, 0, totalDecompressedDataSize))
+		using MemoryStream decompressedDataStream = new(decompressedData, 0, totalDecompressedDataSize);
+		Unknown_AlwaysEqualToZero = decompressedDataStream.ReadBigEndianInt32();
+		if (Unknown_AlwaysEqualToZero != 0)
 		{
-			Unknown_AlwaysEqualToZero = decompressedDataStream.ReadBigEndianInt32();
-			if (Unknown_AlwaysEqualToZero != 0)
-			{
-				Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {Unknown_AlwaysEqualToZero} instead.");
-			}
+			Console.WriteLine($"Warning: {nameof(BnkDecompressedIndexData)}: Bytes 0-3 are not the expected value: 0 expected, got {Unknown_AlwaysEqualToZero} instead.");
+		}
 
-			NumberOfFiles = decompressedDataStream.ReadBigEndianInt32();
-			AllFileEntries = new BnkContentFileEntry[NumberOfFiles];
-			for (int i = 0; i < NumberOfFiles; i++)
-			{
-				AllFileEntries[i] = new(decompressedDataStream, isContentDataCompressed);
-			}
+		NumberOfFiles = decompressedDataStream.ReadBigEndianInt32();
+		AllFileEntries = new BnkContentFileEntry[NumberOfFiles];
+		for (int i = 0; i < NumberOfFiles; i++)
+		{
+			AllFileEntries[i] = new(decompressedDataStream, isContentDataCompressed);
+		}
 
-			for (int i = 0; i < NumberOfFiles; i++)
-			{
-				AllFileEntries[i].ReadFilePathStringsFromStream(decompressedDataStream);
-			}
+		for (int i = 0; i < NumberOfFiles; i++)
+		{
+			AllFileEntries[i].ReadFilePathStringsFromStream(decompressedDataStream);
 		}
 	}
 
@@ -99,7 +115,8 @@ public class BnkDecompressedIndexData
 
 public class BnkContentFileEntry
 {
-	// ReSharper disable once MemberCanBePrivate.Global
+	// ReSharper disable MemberCanBePrivate.Global
+	// ReSharper disable FieldCanBeMadeReadOnly.Global
 	public uint FileNameHash;
 	public uint FileOffset;
 	public int ContentFileDataSize;
@@ -110,6 +127,8 @@ public class BnkContentFileEntry
 
 	public string FilePath = string.Empty;
 	public byte EndOfFilePathMarker;
+	// ReSharper restore FieldCanBeMadeReadOnly.Global
+	// ReSharper restore MemberCanBePrivate.Global
 
 	private const uint FNV1_HASH_SEED = 0x811c9dc5;
 	private const uint FNV1_PRIME = 0x1000193;
@@ -118,6 +137,13 @@ public class BnkContentFileEntry
 	{
 		FileNameHash = DecompressedData.ReadBigEndianUInt32();
 		FileOffset = DecompressedData.ReadBigEndianUInt32();
+		if ((FileOffset & 0xF) != 0)
+		{
+			throw new InvalidDataException(
+				$"Error: {nameof(BnkContentFileEntry)}: File offsets are supposed to be aligned to 16 byte boundaries. " +
+				$"However, the file offset read at 0x{DecompressedData.Position - 4} was {FileOffset} which is not aligned as such. This could indicate data corruption."
+			);
+		}
 
 		TotalDecompressedDataSize = (IsContentCompressed) ?
 			DecompressedData.ReadBigEndianInt32() :

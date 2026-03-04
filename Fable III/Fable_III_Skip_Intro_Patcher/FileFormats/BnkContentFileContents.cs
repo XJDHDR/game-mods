@@ -1,10 +1,15 @@
-﻿// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/???
+﻿// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
 // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
+// This Source Code Form is "Incompatible With Secondary Licenses", as
+// defined by the Mozilla Public License, v. 2.0.
+//
 //  List of this Source Code Form's contributors:
 //  - Xavier "XJDHDR" du Hecquet de Rauville
+//
+
 
 using System.IO.Compression;
 
@@ -42,12 +47,9 @@ public struct BnkContentFileContents
 public struct BnkContentFileData
 {
 	public byte[] ContentFileData;
-
-	// Files are aligned to 16 byte boundaries (except for the last one). If the file's size is not a multiple of 16, padding is added to make the next file start at this boundary.
-	public byte[] Padding;
+	public byte[] Padding;		// Files are aligned to 16 byte boundaries (except for the last one). If the file's size is not a multiple of 16, padding is added to make the next file start at this boundary.
 
 	private bool isContentDataCompressed;
-
 	private const int COMPRESSED_CHUNK_SIZE = 32768;	// Compressed data is stored in chunks of 32KB.
 
 	public BnkContentFileData(Stream ContentFile, ref BnkContentFileEntry FileEntry, int PaddingSize, bool IsContentDataCompressed)

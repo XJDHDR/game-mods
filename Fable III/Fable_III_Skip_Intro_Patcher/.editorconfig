@@ -60,7 +60,7 @@ dotnet_style_prefer_is_null_check_over_reference_equality_method = true : warnin
 #	When line with operators are wrapped to multiple lines, prefer operator at end of first line.
 dotnet_style_operator_placement_when_wrapping = end_of_line : warning
 
-file_header_template = This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/??? \n\nThis Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. \nIf a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.\n\n List of this Source Code Form's contributors:\n - Xavier "XJDHDR" du Hecquet de Rauville\n\n
+file_header_template = This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt \n\nThis Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. \nIf a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.\n\nThis Source Code Form is "Incompatible With Secondary Licenses", as\ndefined by the Mozilla Public License, v. 2.0.\n\n List of this Source Code Form's contributors:\n - Xavier "XJDHDR" du Hecquet de Rauville\n.
 
 
 #### C# Language Rules ####

@@ -1,4 +1,17 @@
-﻿using System.IO.Compression;
+﻿// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt
+//
+// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+// If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// This Source Code Form is "Incompatible With Secondary Licenses", as
+// defined by the Mozilla Public License, v. 2.0.
+//
+//  List of this Source Code Form's contributors:
+//  - Xavier "XJDHDR" du Hecquet de Rauville
+//
+
+
+using System.IO.Compression;
 
 namespace Fable3SkipIntroPatcher.FileFormats;
 
@@ -6,10 +19,15 @@ public struct BnkIndexFileFormat
 {
 	private const int MAX_DECOMPRESSED_DATA_CHUNK_SIZE = 65536;
 
+	// ReSharper disable FieldCanBeMadeReadOnly.Global
+	// ReSharper disable MemberCanBePrivate.Global
 	public uint TotalDataSize;
+	// ReSharper disable once InconsistentNaming
 	public uint Unknown_AlwaysEqualToFour;
 	public bool IsBnkContentDataCompressed;
 	public BnkIndexCompressedDataChunk[] CompressedIndexDataChunks;
+	// ReSharper restore MemberCanBePrivate.Global
+	// ReSharper restore FieldCanBeMadeReadOnly.Global
 
 	public BnkIndexFileFormat(Stream BnkIndexFileData)
 	{
@@ -36,11 +54,9 @@ public struct BnkIndexFileFormat
 		IsBnkContentDataCompressed = (BnkIndexFileData.ReadByte() != 0);
 
 		List<BnkIndexCompressedDataChunk> compressedDataChunks = new();
-		int i = 0;
 		while (BnkIndexFileData.Position < BnkIndexFileData.Length)
 		{
 			compressedDataChunks.Add(new(BnkIndexFileData));
-			i++;
 		}
 		CompressedIndexDataChunks = compressedDataChunks.ToArray();
 	}
@@ -103,9 +119,13 @@ public struct BnkIndexFileFormat
 
 public struct BnkIndexCompressedDataChunk
 {
+	// ReSharper disable FieldCanBeMadeReadOnly.Global
+	// ReSharper disable MemberCanBePrivate.Global
 	public int CompressedDataSize;
 	public int DecompressedDataSize;	// Seems to always be 65536 bytes (except for last chunk).
 	public byte[] CompressedData;
+	// ReSharper restore MemberCanBePrivate.Global
+	// ReSharper restore FieldCanBeMadeReadOnly.Global
 
 	public BnkIndexCompressedDataChunk(Stream BnkIndexFileData)
 	{

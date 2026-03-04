@@ -1,13 +1,26 @@
-﻿namespace Fable3SkipIntroPatcher;
+﻿// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt
+//
+// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+// If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// This Source Code Form is "Incompatible With Secondary Licenses", as
+// defined by the Mozilla Public License, v. 2.0.
+//
+//  List of this Source Code Form's contributors:
+//  - Xavier "XJDHDR" du Hecquet de Rauville
+//
+
+
+namespace Fable3SkipIntroPatcher;
 
 public static class ExtensionMethods
 {
-	extension(Stream stream)
+	extension(Stream Stream)
 	{
 		public int ReadBigEndianInt32()
 		{
 			Span<byte> uintBytes = stackalloc byte[sizeof(int)];
-			readBytesFromBinaryReaderInBigEndianOrder(stream, ref uintBytes);
+			readBytesFromBinaryReaderInBigEndianOrder(Stream, ref uintBytes);
 
 			return BitConverter.ToInt32(uintBytes);
 		}
@@ -15,7 +28,7 @@ public static class ExtensionMethods
 		public uint ReadBigEndianUInt32()
 		{
 			Span<byte> uintBytes = stackalloc byte[sizeof(uint)];
-			readBytesFromBinaryReaderInBigEndianOrder(stream, ref uintBytes);
+			readBytesFromBinaryReaderInBigEndianOrder(Stream, ref uintBytes);
 
 			return BitConverter.ToUInt32(uintBytes);
 		}
@@ -25,7 +38,7 @@ public static class ExtensionMethods
 			Span<byte> intBytes = stackalloc byte[sizeof(int)];
 			BitConverter.TryWriteBytes(intBytes, Value);
 
-			writeBytesToStreamInBigEndianOrder(stream, ref intBytes);
+			writeBytesToStreamInBigEndianOrder(Stream, ref intBytes);
 		}
 
 		public void WriteBigEndianUInt32(uint Value)
@@ -33,7 +46,7 @@ public static class ExtensionMethods
 			Span<byte> uintBytes = stackalloc byte[sizeof(uint)];
 			BitConverter.TryWriteBytes(uintBytes, Value);
 
-			writeBytesToStreamInBigEndianOrder(stream, ref uintBytes);
+			writeBytesToStreamInBigEndianOrder(Stream, ref uintBytes);
 		}
 	}
 
