@@ -3,20 +3,64 @@
         xmlns:vm="using:Fable3SkipIntroPatcherGui.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d"
+        Height="600" Width="650"
         x:Class="Fable3SkipIntroPatcherGui.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Fable3SkipIntroPatcherGui">
+        Title="Fable III Skip Intro Patcher">
 
-    <Design.DataContext>
+	<Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key='Light'>
+					<SolidColorBrush x:Key='BackgroundBrush'>#FFDFDFDF</SolidColorBrush>
+					<SolidColorBrush x:Key='BorderBrushColour'>Black</SolidColorBrush>
+				</ResourceDictionary>
+				<ResourceDictionary x:Key='Dark'>
+					<SolidColorBrush x:Key='BackgroundBrush'>#FF202020</SolidColorBrush>
+					<SolidColorBrush x:Key='BorderBrushColour'>White</SolidColorBrush>
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+		</ResourceDictionary>
+	</Window.Resources>
+
+	<Window.Styles>
+		<Style Selector="TextBlock:disabled">
+			<Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+		</Style>
+	</Window.Styles>
+
+	<Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-	<StackPanel>
-	    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-	</StackPanel>
+	<StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
+		<StackPanel Height="0">
+			<!-- Hidden UI elements that can be used to pass data to the ViewModel -->
+			<TextBox x:Name="Fable3LevelsDataFolderTextBox" IsEnabled="False" Height="0" Text="{Binding Fable3DataFolderLocation}" />
+		</StackPanel>
+	    <TextBox x:Name="Fable3LevelsIndexFileLocationTextBox" IsEnabled="False" Text="{Binding LevelsBnkIndexFileLocation}" />
+	    <TextBox x:Name="Fable3LevelsContentFileLocationTextBox" IsEnabled="False" Text="{Binding LevelsBnkContentFileLocation}" />
 
+	    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
+		    <CheckBox x:Name="ShouldKeepBackupsCheckBox" IsChecked="{Binding ShouldBackupOriginalFiles}">Backup Original Files?</CheckBox>
+
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+				<Button x:Name="ChooseFable3DataFolderButton" Click="ChooseFable3DataFolder" Margin="10">Select Bnk Location</Button>
+				<Button x:Name="PatchFilesButton" Margin="10" Command="{Binding PatchFable3BnkFilesCommand}">Patch Bnk Files</Button>
+			</StackPanel>
+	    </StackPanel>
+
+	    <Border Padding="1" BorderBrush="{DynamicResource BorderBrushColour}"  Height="400" Width="600">
+		    <ScrollViewer VerticalScrollBarVisibility="Auto">
+			    <TextBlock
+				    x:Name="JobStatusOutputTextBlock" xml:space="preserve" IsEnabled="False" Text="{Binding JobStatusOutputLogText}"
+				    Padding="6" TextWrapping="WrapWithOverflow" Background="{DynamicResource BackgroundBrush}"
+			    />
+		    </ScrollViewer>
+	    </Border>
+	</StackPanel>
 </Window>
