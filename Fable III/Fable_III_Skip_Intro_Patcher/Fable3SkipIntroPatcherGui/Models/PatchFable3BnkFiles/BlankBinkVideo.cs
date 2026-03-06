@@ -11,9 +11,10 @@
 //
 
 
-using Fable3SkipIntroPatcher.FileFormats;
+using System;
+using Fable3SkipIntroPatcherGui.Models.PatchFable3BnkFiles.FileFormats;
 
-namespace Fable3SkipIntroPatcher;
+namespace Fable3SkipIntroPatcherGui.Models.PatchFable3BnkFiles;
 
 public static class BlankBinkVideo
 {

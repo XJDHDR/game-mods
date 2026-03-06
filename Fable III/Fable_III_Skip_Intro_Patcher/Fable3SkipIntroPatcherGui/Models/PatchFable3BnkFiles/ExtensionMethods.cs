@@ -11,7 +11,10 @@
 //
 
 
-namespace Fable3SkipIntroPatcher;
+using System;
+using System.IO;
+
+namespace Fable3SkipIntroPatcherGui.Models.PatchFable3BnkFiles;
 
 public static class ExtensionMethods
 {

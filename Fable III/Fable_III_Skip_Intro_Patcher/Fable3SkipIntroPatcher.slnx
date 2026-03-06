@@ -1,4 +1,3 @@
 <Solution>
-  <Project Path="Fable3SkipIntroPatcherConsole/Fable3SkipIntroPatcher.csproj" />
   <Project Path="Fable3SkipIntroPatcherGui/Fable3SkipIntroPatcherGui.csproj" />
 </Solution>

@@ -11,9 +11,12 @@
 //
 
 
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
 
-namespace Fable3SkipIntroPatcher.FileFormats;
+namespace Fable3SkipIntroPatcherGui.Models.PatchFable3BnkFiles.FileFormats;
 
 public struct BnkIndexFileFormat
 {

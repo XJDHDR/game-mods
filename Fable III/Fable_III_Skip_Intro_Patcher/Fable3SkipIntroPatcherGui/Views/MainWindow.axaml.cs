@@ -1,3 +1,16 @@
+// This file is or was originally a part of the Fable III Skip Intro Patcher project, which can be found here: https://github.com/XJDHDR/game-mods/blob/master/Fable%20III/Fable_III_Skip_Intro_Patcher/License.txt
+//
+// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+// If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// This Source Code Form is "Incompatible With Secondary Licenses", as
+// defined by the Mozilla Public License, v. 2.0.
+//
+//  List of this Source Code Form's contributors:
+//  - Xavier "XJDHDR" du Hecquet de Rauville
+//
+
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,6 +29,7 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
+		Closing += onWindowClosingHandler;
 	}
 
 	public async void ChooseFable3DataFolder(object Sender, RoutedEventArgs Args)
@@ -87,5 +101,21 @@ public partial class MainWindow : Window
 				return "";
 			}
 		}
+	}
+
+	private void onWindowClosingHandler(object? Sender, WindowClosingEventArgs Args)
+	{
+		if (IsJobRunningCheckBox.IsChecked != true)
+		{
+			return;
+		}
+
+		IMsBox<ButtonResult> messageBox = MessageBoxManager.GetMessageBoxStandard(
+			"Background job still running",
+			"A background job is still running. Please wait for it to finish before exiting."
+		);
+		messageBox.ShowAsPopupAsync(this);
+
+		Args.Cancel = true;
 	}
 }

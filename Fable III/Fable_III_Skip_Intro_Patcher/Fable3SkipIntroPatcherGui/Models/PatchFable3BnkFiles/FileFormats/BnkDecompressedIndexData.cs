@@ -11,13 +11,15 @@
 //
 
 
+using System;
 using System.Buffers;
+using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace Fable3SkipIntroPatcher.FileFormats;
+namespace Fable3SkipIntroPatcherGui.Models.PatchFable3BnkFiles.FileFormats;
 
-public class BnkDecompressedIndexData
+public sealed class BnkDecompressedIndexData
 {
 	// ReSharper disable MemberCanBePrivate.Global
 	// ReSharper disable FieldCanBeMadeReadOnly.Global
@@ -113,7 +115,7 @@ public class BnkDecompressedIndexData
 	}
 }
 
-public class BnkContentFileEntry
+public sealed class BnkContentFileEntry
 {
 	// ReSharper disable MemberCanBePrivate.Global
 	// ReSharper disable FieldCanBeMadeReadOnly.Global
