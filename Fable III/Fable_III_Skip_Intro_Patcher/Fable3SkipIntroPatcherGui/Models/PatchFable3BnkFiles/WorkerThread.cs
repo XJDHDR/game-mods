@@ -106,8 +106,16 @@ public sealed class WorkerThread(
 		{
 			UpdateStatusLogFunc("Backing up original files ...", false);
 			startTime = Stopwatch.GetTimestamp();
-			File.Move(fable3Paths.ContentFile, $"{fable3Paths.DataFolder}/BACKUP-levels.bnk.dat");
-			File.Move(fable3Paths.IndexFile, $"{fable3Paths.DataFolder}/BACKUP-levels.bnk");
+			if (!File.Exists($"{fable3Paths.DataFolder}/BACKUP-levels.bnk.dat"))
+			{
+				File.Move(fable3Paths.ContentFile, $"{fable3Paths.DataFolder}/BACKUP-levels.bnk.dat");
+			}
+
+			if (!File.Exists($"{fable3Paths.DataFolder}/BACKUP-levels.bnk"))
+			{
+				File.Move(fable3Paths.IndexFile, $"{fable3Paths.DataFolder}/BACKUP-levels.bnk");
+			}
+
 			elapsedTime = Stopwatch.GetElapsedTime(startTime);
 			UpdateStatusLogFunc($" done. Took {elapsedTime.Seconds}s {elapsedTime.Milliseconds}.{elapsedTime.Microseconds}ms.", true);
 			UpdateStatusLogFunc("", true);

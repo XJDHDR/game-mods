@@ -36,6 +36,9 @@ public partial class MainWindow : Window
 	{
 		try
 		{
+			ChooseFable3DataFolderButton.IsEnabled = false;
+			PatchFilesButton.IsEnabled = false;
+
 			string fable3DataFolder = await getFable3LevelsBnkLocation();
 			if (fable3DataFolder == "")
 			{
@@ -50,6 +53,11 @@ public partial class MainWindow : Window
 		catch (Exception e)
 		{
 			JobStatusOutputTextBlock.Text = e.ToString();
+		}
+		finally
+		{
+			ChooseFable3DataFolderButton.IsEnabled = true;
+			PatchFilesButton.IsEnabled = true;
 		}
 	}
 
